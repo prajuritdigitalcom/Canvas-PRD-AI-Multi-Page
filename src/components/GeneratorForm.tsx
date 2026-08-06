@@ -18,6 +18,7 @@ interface GeneratorFormProps {
   onSubmitGenerate: () => void;
   isGenerating: boolean;
   visitorApiKeys: string[];
+  onFillSample?: () => void;
 }
 
 export const GeneratorForm: React.FC<GeneratorFormProps> = ({
@@ -26,6 +27,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   onSubmitGenerate,
   isGenerating,
   visitorApiKeys,
+  onFillSample,
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeSuccess, setAnalyzeSuccess] = useState(false);
@@ -116,15 +118,27 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     >
       {/* SECTION 1: Brief & Informasi Proyek */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
-        <div className="border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
-            <Building2 className="w-4 h-4 text-[#fe4c6f]" />
-            <span>INFORMASI UTAMA & BRIEF</span>
+        <div className="border-b border-slate-100 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
+              <Building2 className="w-4 h-4 text-[#fe4c6f]" />
+              <span>INFORMASI UTAMA & BRIEF</span>
+            </div>
+            <h2 className="text-xl font-extrabold text-slate-900">Profil Bisnis & Deskripsi Brief Mentah</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Tuliskan ide bisnis atau salin brief dari klien. Mode Auto AI dapat membantu mengekstrak informasi dan mengusulkan halaman secara otomatis.
+            </p>
           </div>
-          <h2 className="text-xl font-extrabold text-slate-900">Profil Bisnis & Deskripsi Brief Mentah</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Tuliskan ide bisnis atau salin brief dari klien. Mode Auto AI dapat membantu mengekstrak informasi dan mengusulkan halaman secara otomatis.
-          </p>
+          {onFillSample && (
+            <button
+              type="button"
+              onClick={onFillSample}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors border border-slate-200 shrink-0 self-start md:self-auto cursor-pointer"
+            >
+              <Wand2 className="w-3.5 h-3.5 text-[#fe4c6f]" />
+              <span>Isi Contoh Otomatis</span>
+            </button>
+          )}
         </div>
 
         {/* Brief Textarea & Auto Analyze Button */}

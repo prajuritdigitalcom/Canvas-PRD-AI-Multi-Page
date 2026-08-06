@@ -10,18 +10,29 @@ export const maxDuration = 60;
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 
-// Helper to parse server & backup Gemini API keys
+// Helper: pisah string multi-baris atau koma jadi array key bersih
+const splitKeysByLine = (raw: string): string[] =>
+  raw
+    .split(/[\n,]+/)
+    .map((k) => k.replace(/\r/g, '').trim())
+    .filter(Boolean);
+
 const getServerKeys = (): string[] => {
   const keys: string[] = [];
   if (process.env.GEMINI_API_KEY) {
-    const split = process.env.GEMINI_API_KEY.split(',').map((k) => k.trim()).filter(Boolean);
-    keys.push(...split);
+    const split = splitKeysByLine(process.env.GEMINI_API_KEY);
+    split.forEach((k) => {
+      if (!keys.includes(k)) keys.push(k);
+    });
   }
   Object.keys(process.env).forEach((envKey) => {
     if (envKey.startsWith('GEMINI_API_KEY_') && !envKey.includes('BACKUP')) {
-      const val = process.env[envKey]?.trim();
-      if (val && !keys.includes(val)) {
-        keys.push(val);
+      const val = process.env[envKey];
+      if (val) {
+        const split = splitKeysByLine(val);
+        split.forEach((k) => {
+          if (!keys.includes(k)) keys.push(k);
+        });
       }
     }
   });
@@ -36,9 +47,9 @@ const getBackupKeys = (): string[] => {
       envKey === 'GEMINI_BACKUP_KEY' ||
       envKey === 'GEMINI_BACKUP_KEYS'
     ) {
-      const val = process.env[envKey]?.trim();
+      const val = process.env[envKey];
       if (val) {
-        const split = val.split(',').map((k) => k.trim()).filter(Boolean);
+        const split = splitKeysByLine(val);
         split.forEach((k) => {
           if (!keys.includes(k)) keys.push(k);
         });

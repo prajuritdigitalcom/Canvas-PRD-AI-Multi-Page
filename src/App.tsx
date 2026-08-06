@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectFormState, PRDGenerateResponse, SavedPRD, PageDefinition } from './types';
 import { PAGE_PRESETS } from './data/pagePresets';
+import { SAMPLE_PROJECT } from './data/sampleProject';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { GeneratorForm } from './components/GeneratorForm';
 import { OutputView } from './components/OutputView';
 import { HistoryView } from './components/HistoryView';
 import { SettingsView } from './components/SettingsView';
+import { Wand2 } from 'lucide-react';
 
 const DEFAULT_PAGES: PageDefinition[] = PAGE_PRESETS[0].pages.map((p, idx) => ({
   ...p,
@@ -223,6 +225,19 @@ export default function App() {
     }
   };
 
+  const handleFillSampleData = () => {
+    if (formState.projectName || formState.rawBrief) {
+      const confirmFill = confirm(
+        'Form akan diisi dengan data contoh dan menimpa isian yang sudah ada. Lanjutkan?'
+      );
+      if (!confirmFill) return;
+    }
+    setFormState({
+      ...SAMPLE_PROJECT,
+      pages: SAMPLE_PROJECT.pages.map((p) => ({ ...p })),
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#fe4c6f] selection:text-white">
       {/* Top Header */}
@@ -251,7 +266,7 @@ export default function App() {
             <div className="space-y-8">
               {/* Hero Banner when no PRD generated yet */}
               {!prdResult && (
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 text-center max-w-5xl mx-auto space-y-3 shadow-xs">
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 text-center max-w-5xl mx-auto space-y-4 shadow-xs">
                   <span className="px-3.5 py-1 rounded-full bg-[#fe4c6f]/10 text-[#fe4c6f] border border-[#fe4c6f]/20 text-xs font-bold uppercase tracking-wider inline-block">
                     PRODUK V2.0 — MULTI-PAGE GENERATOR
                   </span>
@@ -260,6 +275,20 @@ export default function App() {
                   </h2>
                   <p className="text-xs md:text-sm text-slate-600 leading-relaxed max-w-3xl mx-auto">
                     Aplikasi ini membantu Anda merancang arsitektur website multi-halaman (Home, About, Services, Blog, Contact, dll.) dan menghasilkan PRD bertaraf profesional yang dapat dicopy-paste langsung ke <strong className="text-slate-900">Google AI Studio (mode Build)</strong>.
+                  </p>
+
+                  <div className="flex items-center justify-center pt-1">
+                    <button
+                      type="button"
+                      onClick={handleFillSampleData}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors border border-slate-200 cursor-pointer"
+                    >
+                      <Wand2 className="w-3.5 h-3.5 text-[#fe4c6f]" />
+                      <span>Coba dengan Contoh Data (Isi Otomatis)</span>
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Mengisi form dengan contoh brief bisnis nyata — cocok untuk mencoba alur aplikasi tanpa mengetik manual.
                   </p>
                 </div>
               )}
@@ -280,6 +309,7 @@ export default function App() {
                   onSubmitGenerate={handleGeneratePRD}
                   isGenerating={isGenerating}
                   visitorApiKeys={visitorApiKeys}
+                  onFillSample={handleFillSampleData}
                 />
               )}
             </div>
