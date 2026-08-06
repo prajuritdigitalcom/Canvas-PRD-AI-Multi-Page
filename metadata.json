@@ -1,0 +1,6 @@
+{
+  "name": "AI Studio Multi-Page PRD Generator",
+  "description": "Generator PRD terstruktur untuk membangun website multi-halaman dengan Google AI Studio Build",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

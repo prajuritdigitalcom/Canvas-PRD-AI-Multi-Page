@@ -1,0 +1,308 @@
+import React from 'react';
+import { PageDefinition, PageType, ProjectFormState } from '../types';
+import { PAGE_PRESETS } from '../data/pagePresets';
+import { Plus, Trash2, ArrowUp, ArrowDown, Layout, Globe, Sparkles, Check, Info } from 'lucide-react';
+
+interface PageBuilderProps {
+  pages: PageDefinition[];
+  onChangePages: (pages: PageDefinition[]) => void;
+  websiteType: ProjectFormState['websiteType'];
+}
+
+export const PageBuilder: React.FC<PageBuilderProps> = ({
+  pages,
+  onChangePages,
+  websiteType,
+}) => {
+  const addPage = () => {
+    const newPageNumber = pages.length + 1;
+    const newPage: PageDefinition = {
+      id: 'page-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      pageName: `Halaman Baru ${newPageNumber}`,
+      pageSlug: `/halaman-${newPageNumber}`,
+      pageType: 'Custom',
+      pagePurpose: 'Penjelasan tujuan dan fungsi halaman ini.',
+      keySections: ['Hero Banner', 'Konten Utama', 'CTA Banner'],
+      isInMainNav: true,
+      order: pages.length + 1,
+    };
+    onChangePages([...pages, newPage]);
+  };
+
+  const removePage = (id: string) => {
+    if (pages.length <= 1) {
+      alert('Website multi-halaman membutuhkan minimal 1 halaman dasar.');
+      return;
+    }
+    const filtered = pages.filter((p) => p.id !== id).map((p, idx) => ({ ...p, order: idx + 1 }));
+    onChangePages(filtered);
+  };
+
+  const updatePage = (id: string, updates: Partial<PageDefinition>) => {
+    const updated = pages.map((p) => {
+      if (p.id === id) {
+        const next = { ...p, ...updates };
+        // Auto generate slug if pageName changed and slug wasn't manually customized heavily
+        if (updates.pageName && (!p.pageSlug || p.pageSlug === '/' || p.pageSlug === `/${slugify(p.pageName)}`)) {
+          next.pageSlug = updates.pageName.toLowerCase() === 'home' || updates.pageName.toLowerCase() === 'beranda' 
+            ? '/' 
+            : `/${slugify(updates.pageName)}`;
+        }
+        return next;
+      }
+      return p;
+    });
+    onChangePages(updated);
+  };
+
+  const movePage = (index: number, direction: 'up' | 'down') => {
+    if ((direction === 'up' && index === 0) || (direction === 'down' && index === pages.length - 1)) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const copy = [...pages];
+    const temp = copy[index];
+    copy[index] = copy[targetIndex];
+    copy[targetIndex] = temp;
+    const reordered = copy.map((p, idx) => ({ ...p, order: idx + 1 }));
+    onChangePages(reordered);
+  };
+
+  const applyPreset = (presetId: string) => {
+    const preset = PAGE_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    
+    if (pages.length > 0 && !confirm(`Ganti ${pages.length} halaman saat ini dengan template preset "${preset.name}"?`)) {
+      return;
+    }
+
+    const newPages: PageDefinition[] = preset.pages.map((p, idx) => ({
+      ...p,
+      id: 'page-preset-' + idx + '-' + Date.now(),
+      order: idx + 1,
+    }));
+    onChangePages(newPages);
+  };
+
+  const slugify = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const PAGE_TYPES: PageType[] = [
+    'Home',
+    'About',
+    'Services',
+    'Service Detail',
+    'Portfolio',
+    'Blog List',
+    'Blog Detail',
+    'Team',
+    'Pricing',
+    'FAQ',
+    'Testimonials',
+    'Contact',
+    'Custom',
+  ];
+
+  return (
+    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm mb-1">
+            <Layout className="w-4 h-4" />
+            <span>ARSIREKTUR MULTI-HALAMAN</span>
+          </div>
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            Page Builder & Routing Map
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
+              {pages.length} Halaman
+            </span>
+          </h3>
+          <p className="text-sm text-slate-400 mt-1">
+            Susun daftar halaman yang akan dibangun secara fisik (\`src/pages/*.tsx\`) dalam proyek React + Vite Anda.
+          </p>
+        </div>
+
+        {/* Preset quick loader */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative group">
+            <button
+              type="button"
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-2 transition-all shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Gunakan Preset Halaman</span>
+            </button>
+            <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-2 hidden group-hover:block z-50">
+              <div className="text-[11px] font-semibold text-slate-400 px-3 py-1.5 border-b border-slate-700/60 uppercase tracking-wider">
+                Pilih Preset Sesuai Kebutuhan
+              </div>
+              <div className="py-1 space-y-1">
+                {PAGE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applyPreset(p.id)}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-600/20 hover:text-indigo-200 text-slate-300 text-xs flex flex-col gap-0.5 transition-colors"
+                  >
+                    <span className="font-semibold text-slate-100">{p.name}</span>
+                    <span className="text-[10px] text-slate-400 line-clamp-1">{p.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={addPage}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Halaman</span>
+          </button>
+        </div>
+      </div>
+
+      {pages.length < 2 && (
+        <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 text-amber-300 p-3.5 rounded-xl text-xs">
+          <Info className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            Website bisnis idealnya memiliki minimal 2-5 halaman (misal: Home, Tentang Kami, Layanan, Kontak) agar memberikan impresi profesional di Google AI Studio.
+          </span>
+        </div>
+      )}
+
+      {/* Page List */}
+      <div className="space-y-4">
+        {pages.map((page, index) => (
+          <div
+            key={page.id}
+            className="bg-slate-950/60 border border-slate-800 hover:border-slate-700 rounded-xl p-4.5 transition-all space-y-4"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-6 h-6 rounded-lg bg-indigo-950 text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-800/40">
+                  {index + 1}
+                </span>
+                <input
+                  type="text"
+                  value={page.pageName}
+                  onChange={(e) => updatePage(page.id, { pageName: e.target.value })}
+                  placeholder="Nama Halaman (cth: Tentang Kami)"
+                  className="bg-transparent font-bold text-white text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded px-2 py-0.5 border border-transparent hover:border-slate-800"
+                />
+                <span className="text-xs text-slate-500 font-mono hidden md:inline">
+                  {page.pageSlug}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg hover:border-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={page.isInMainNav}
+                    onChange={(e) => updatePage(page.id, { isInMainNav: e.target.checked })}
+                    className="rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Tampil di Nav Utama</span>
+                </label>
+
+                <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => movePage(index, 'up')}
+                    disabled={index === 0}
+                    className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                    title="Naikkan urutan"
+                  >
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => movePage(index, 'down')}
+                    disabled={index === pages.length - 1}
+                    className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                    title="Turunkan urutan"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => removePage(page.id)}
+                  className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                  title="Hapus Halaman"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Inputs grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">URL Path / Slug</label>
+                <div className="relative">
+                  <Globe className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={page.pageSlug}
+                    onChange={(e) => updatePage(page.id, { pageSlug: e.target.value })}
+                    placeholder="/layanan"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">Tipe Halaman</label>
+                <select
+                  value={page.pageType}
+                  onChange={(e) => updatePage(page.id, { pageType: e.target.value as PageType })}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                >
+                  {PAGE_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2 md:col-span-1">
+                <label className="block text-slate-400 font-medium mb-1">Section Kunci (Dipisah koma)</label>
+                <input
+                  type="text"
+                  value={page.keySections.join(', ')}
+                  onChange={(e) =>
+                    updatePage(page.id, {
+                      keySections: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="Hero, Grid Layanan, Testimoni, CTA"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="sm:col-span-2 md:col-span-3">
+                <label className="block text-slate-400 font-medium mb-1">Tujuan & Fungsi Halaman Ini</label>
+                <textarea
+                  rows={2}
+                  value={page.pagePurpose}
+                  onChange={(e) => updatePage(page.id, { pagePurpose: e.target.value })}
+                  placeholder="Jelaskan peran halaman ini untuk pengunjung (cth: Menampilkan seluruh katalog produk lengkap dengan filter)..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
