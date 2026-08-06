@@ -10,16 +10,60 @@ export const maxDuration = 60;
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 
+// Helper to parse server & backup Gemini API keys
+const getServerKeys = (): string[] => {
+  const keys: string[] = [];
+  if (process.env.GEMINI_API_KEY) {
+    const split = process.env.GEMINI_API_KEY.split(',').map((k) => k.trim()).filter(Boolean);
+    keys.push(...split);
+  }
+  Object.keys(process.env).forEach((envKey) => {
+    if (envKey.startsWith('GEMINI_API_KEY_') && !envKey.includes('BACKUP')) {
+      const val = process.env[envKey]?.trim();
+      if (val && !keys.includes(val)) {
+        keys.push(val);
+      }
+    }
+  });
+  return keys;
+};
+
+const getBackupKeys = (): string[] => {
+  const keys: string[] = [];
+  Object.keys(process.env).forEach((envKey) => {
+    if (
+      envKey.includes('BACKUP') ||
+      envKey === 'GEMINI_BACKUP_KEY' ||
+      envKey === 'GEMINI_BACKUP_KEYS'
+    ) {
+      const val = process.env[envKey]?.trim();
+      if (val) {
+        const split = val.split(',').map((k) => k.trim()).filter(Boolean);
+        split.forEach((k) => {
+          if (!keys.includes(k)) keys.push(k);
+        });
+      }
+    }
+  });
+  return keys;
+};
+
 // Helper to instantiate Gemini client
 const getGeminiClient = (visitorApiKey?: string) => {
-  const apiKey = process.env.GEMINI_API_KEY?.trim() || visitorApiKey?.trim();
-  if (!apiKey) {
+  const serverKeys = getServerKeys();
+  const backupKeys = getBackupKeys();
+  
+  // Prefer visitor key if provided, or server keys, or server backup keys
+  const visitorKeyClean = visitorApiKey?.trim();
+  const primaryKey = visitorKeyClean || serverKeys[0] || backupKeys[0];
+
+  if (!primaryKey) {
     throw new Error(
       'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.'
     );
   }
   return new GoogleGenAI({
-    apiKey,
+    apiKey: primaryKey,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
@@ -35,8 +79,14 @@ app.get('/api/health', (req, res) => {
 
 // API Server & Key Status Check
 app.get('/api/status', (req, res) => {
-  const hasSystemApiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
-  res.json({ status: 'ok', hasSystemApiKey });
+  const serverKeys = getServerKeys();
+  const backupKeys = getBackupKeys();
+  res.json({
+    status: 'ok',
+    hasSystemApiKey: serverKeys.length > 0 || backupKeys.length > 0,
+    serverKeyCount: serverKeys.length,
+    backupKeyCount: backupKeys.length,
+  });
 });
 
 // API: Analyze Brief (Auto Mode)

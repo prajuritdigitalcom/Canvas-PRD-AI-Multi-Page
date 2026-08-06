@@ -53,6 +53,8 @@ export default function App() {
     return sessionStorage.getItem('canvas_prd_visitor_api_key') || '';
   });
   const [hasSystemApiKey, setHasSystemApiKey] = useState(true);
+  const [serverKeyCount, setServerKeyCount] = useState<number>(0);
+  const [backupKeyCount, setBackupKeyCount] = useState<number>(0);
 
   // Check server API key status on mount
   useEffect(() => {
@@ -61,6 +63,12 @@ export default function App() {
       .then((data) => {
         if (typeof data.hasSystemApiKey === 'boolean') {
           setHasSystemApiKey(data.hasSystemApiKey);
+        }
+        if (typeof data.serverKeyCount === 'number') {
+          setServerKeyCount(data.serverKeyCount);
+        }
+        if (typeof data.backupKeyCount === 'number') {
+          setBackupKeyCount(data.backupKeyCount);
         }
       })
       .catch(() => {});
@@ -214,6 +222,9 @@ export default function App() {
           activeTab={activeTab}
           onSelectTab={(tab) => setActiveTab(tab)}
           savedPRDCount={savedPRDs.length}
+          serverKeyCount={serverKeyCount}
+          backupKeyCount={backupKeyCount}
+          hasVisitorKey={Boolean(visitorApiKey.trim())}
         />
 
         {/* Content View Area */}

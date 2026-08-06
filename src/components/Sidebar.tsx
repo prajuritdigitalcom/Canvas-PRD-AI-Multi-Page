@@ -5,9 +5,20 @@ interface SidebarProps {
   activeTab: 'generator' | 'history' | 'settings';
   onSelectTab: (tab: 'generator' | 'history' | 'settings') => void;
   savedPRDCount: number;
+  serverKeyCount: number;
+  backupKeyCount: number;
+  hasVisitorKey: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, savedPRDCount }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  activeTab,
+  onSelectTab,
+  savedPRDCount,
+  serverKeyCount,
+  backupKeyCount,
+  hasVisitorKey,
+}) => {
+  const totalBackup = backupKeyCount + (hasVisitorKey ? 1 : 0);
   const NAV_ITEMS = [
     {
       id: 'generator' as const,
@@ -90,16 +101,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, savedP
         <div className="space-y-2 text-xs pt-2 border-t border-slate-200/80">
           <div className="flex items-center justify-between">
             <span className="text-slate-600 font-medium text-[11px]">Server</span>
-            <span className="inline-flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Aktif (9)
-            </span>
+            {serverKeyCount > 0 ? (
+              <span className="inline-flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Aktif ({serverKeyCount})
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-amber-800 font-bold text-[11px] bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
+                Kosong (0)
+              </span>
+            )}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-600 font-medium text-[11px]">Backup</span>
-            <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
-              Kosong
-            </span>
+            {totalBackup > 0 ? (
+              <span className="inline-flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Aktif ({totalBackup})
+              </span>
+            ) : (
+              <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
+                Kosong
+              </span>
+            )}
           </div>
         </div>
       </div>
