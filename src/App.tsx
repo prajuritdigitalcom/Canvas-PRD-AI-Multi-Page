@@ -49,8 +49,19 @@ export default function App() {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [isPRDSaved, setIsPRDSaved] = useState(false);
 
-  const [visitorApiKey, setVisitorApiKey] = useState<string>(() => {
-    return sessionStorage.getItem('canvas_prd_visitor_api_key') || '';
+  const [visitorApiKeys, setVisitorApiKeys] = useState<string[]>(() => {
+    const storedArray = sessionStorage.getItem('canvas_prd_visitor_api_keys');
+    if (storedArray) {
+      try {
+        const parsed = JSON.parse(storedArray);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch (e) {
+        console.error('Failed to parse visitor keys array', e);
+      }
+    }
+    // Migration fallback from single string key
+    const legacySingle = sessionStorage.getItem('canvas_prd_visitor_api_key');
+    return legacySingle ? [legacySingle.trim()] : [];
   });
   const [hasSystemApiKey, setHasSystemApiKey] = useState(true);
   const [serverKeyCount, setServerKeyCount] = useState<number>(0);
@@ -74,14 +85,21 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  const handleSaveVisitorApiKey = (key: string) => {
-    sessionStorage.setItem('canvas_prd_visitor_api_key', key);
-    setVisitorApiKey(key);
+  const handleSaveVisitorApiKeys = (keys: string[]) => {
+    sessionStorage.setItem('canvas_prd_visitor_api_keys', JSON.stringify(keys));
+    setVisitorApiKeys(keys);
   };
 
-  const handleClearVisitorApiKey = () => {
+  const handleClearVisitorApiKeys = () => {
+    sessionStorage.removeItem('canvas_prd_visitor_api_keys');
     sessionStorage.removeItem('canvas_prd_visitor_api_key');
-    setVisitorApiKey('');
+    setVisitorApiKeys([]);
+  };
+
+  const handleRemoveVisitorApiKey = (keyToRemove: string) => {
+    const updated = visitorApiKeys.filter((k) => k !== keyToRemove);
+    sessionStorage.setItem('canvas_prd_visitor_api_keys', JSON.stringify(updated));
+    setVisitorApiKeys(updated);
   };
 
   // Load saved PRDs and Draft on initial mount
@@ -138,7 +156,7 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(visitorApiKey ? { 'x-user-api-key': visitorApiKey } : {}),
+          ...(visitorApiKeys.length > 0 ? { 'x-user-api-keys': JSON.stringify(visitorApiKeys) } : {}),
         },
         body: JSON.stringify(formState),
       });
@@ -224,7 +242,7 @@ export default function App() {
           savedPRDCount={savedPRDs.length}
           serverKeyCount={serverKeyCount}
           backupKeyCount={backupKeyCount}
-          hasVisitorKey={Boolean(visitorApiKey.trim())}
+          visitorKeyCount={visitorApiKeys.length}
         />
 
         {/* Content View Area */}
@@ -261,7 +279,7 @@ export default function App() {
                   onChangeForm={setFormState}
                   onSubmitGenerate={handleGeneratePRD}
                   isGenerating={isGenerating}
-                  visitorApiKey={visitorApiKey}
+                  visitorApiKeys={visitorApiKeys}
                 />
               )}
             </div>
@@ -277,9 +295,10 @@ export default function App() {
 
           {activeTab === 'settings' && (
             <SettingsView
-              visitorApiKey={visitorApiKey}
-              onSaveVisitorApiKey={handleSaveVisitorApiKey}
-              onClearVisitorApiKey={handleClearVisitorApiKey}
+              visitorApiKeys={visitorApiKeys}
+              onSaveVisitorApiKeys={handleSaveVisitorApiKeys}
+              onClearVisitorApiKeys={handleClearVisitorApiKeys}
+              onRemoveVisitorApiKey={handleRemoveVisitorApiKey}
               hasSystemApiKey={hasSystemApiKey}
             />
           )}

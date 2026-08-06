@@ -7,7 +7,7 @@ interface SidebarProps {
   savedPRDCount: number;
   serverKeyCount: number;
   backupKeyCount: number;
-  hasVisitorKey: boolean;
+  visitorKeyCount: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -16,9 +16,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   savedPRDCount,
   serverKeyCount,
   backupKeyCount,
-  hasVisitorKey,
+  visitorKeyCount,
 }) => {
-  const totalBackup = backupKeyCount + (hasVisitorKey ? 1 : 0);
   const NAV_ITEMS = [
     {
       id: 'generator' as const,
@@ -107,17 +106,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 Aktif ({serverKeyCount})
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-amber-800 font-bold text-[11px] bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
-                Kosong (0)
+              <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
+                Kosong
               </span>
             )}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-600 font-medium text-[11px]">Backup</span>
-            {totalBackup > 0 ? (
+            {backupKeyCount > 0 ? (
               <span className="inline-flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Aktif ({totalBackup})
+                Aktif ({backupKeyCount})
+              </span>
+            ) : (
+              <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
+                Kosong
+              </span>
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600 font-medium text-[11px]">Pribadi (Anda)</span>
+            {visitorKeyCount > 0 ? (
+              <span className="inline-flex items-center gap-1.5 text-sky-800 font-bold text-[11px] bg-sky-50 px-2.5 py-0.5 rounded-md border border-sky-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
+                Aktif ({visitorKeyCount})
               </span>
             ) : (
               <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">

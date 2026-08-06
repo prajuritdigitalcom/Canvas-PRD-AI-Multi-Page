@@ -17,7 +17,7 @@ interface GeneratorFormProps {
   onChangeForm: (form: ProjectFormState) => void;
   onSubmitGenerate: () => void;
   isGenerating: boolean;
-  visitorApiKey: string;
+  visitorApiKeys: string[];
 }
 
 export const GeneratorForm: React.FC<GeneratorFormProps> = ({
@@ -25,7 +25,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   onChangeForm,
   onSubmitGenerate,
   isGenerating,
-  visitorApiKey,
+  visitorApiKeys,
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeSuccess, setAnalyzeSuccess] = useState(false);
@@ -48,7 +48,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(visitorApiKey ? { 'x-user-api-key': visitorApiKey } : {}),
+          ...(visitorApiKeys.length > 0 ? { 'x-user-api-keys': JSON.stringify(visitorApiKeys) } : {}),
         },
         body: JSON.stringify({ rawBrief: formState.rawBrief }),
       });

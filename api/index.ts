@@ -48,28 +48,40 @@ const getBackupKeys = (): string[] => {
   return keys;
 };
 
-// Helper to instantiate Gemini client
-const getGeminiClient = (visitorApiKey?: string) => {
-  const serverKeys = getServerKeys();
-  const backupKeys = getBackupKeys();
-  
-  // Prefer visitor key if provided, or server keys, or server backup keys
-  const visitorKeyClean = visitorApiKey?.trim();
-  const primaryKey = visitorKeyClean || serverKeys[0] || backupKeys[0];
+// Helper to parse visitor API keys from headers
+const getVisitorKeys = (req: express.Request): string[] => {
+  const headerKeys = req.headers['x-user-api-keys'] as string | undefined;
+  const legacyHeader = req.headers['x-user-api-key'] as string | undefined;
 
-  if (!primaryKey) {
-    throw new Error(
-      'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.'
-    );
+  let parsed: string[] = [];
+  if (headerKeys) {
+    try {
+      const json = JSON.parse(headerKeys);
+      if (Array.isArray(json)) {
+        parsed = json.map((k) => (typeof k === 'string' ? k.trim() : '')).filter(Boolean);
+      }
+    } catch {
+      if (typeof headerKeys === 'string') {
+        parsed = headerKeys.split(/[\n,]+/).map((k) => k.trim()).filter(Boolean);
+      }
+    }
   }
-  return new GoogleGenAI({
-    apiKey: primaryKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
+
+  if (parsed.length === 0 && legacyHeader) {
+    parsed = legacyHeader.split(/[\n,]+/).map((k) => k.trim()).filter(Boolean);
+  }
+
+  return parsed;
+};
+
+// Get ordered unique list of all candidate keys (Visitor -> Server -> Backup)
+const getAllCandidateKeys = (req: express.Request): string[] => {
+  const visitor = getVisitorKeys(req);
+  const server = getServerKeys();
+  const backup = getBackupKeys();
+
+  const combined = [...visitor, ...server, ...backup];
+  return Array.from(new Set(combined.filter(Boolean)));
 };
 
 // API Health Check
@@ -89,6 +101,49 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// API: Validate visitor Gemini API keys
+app.post('/api/validate-keys', async (req, res) => {
+  try {
+    const { keys } = req.body as { keys?: string[] };
+    if (!Array.isArray(keys) || keys.length === 0) {
+      return res.status(400).json({ error: 'Tidak ada key yang dikirim.' });
+    }
+
+    // Limit to max 20 keys
+    const candidates = keys
+      .slice(0, 20)
+      .map((k) => (typeof k === 'string' ? k.trim() : ''))
+      .filter(Boolean);
+
+    const results = await Promise.all(
+      candidates.map(async (key) => {
+        try {
+          const ai = new GoogleGenAI({
+            apiKey: key,
+            httpOptions: {
+              headers: {
+                'User-Agent': 'aistudio-build',
+              },
+            },
+          });
+          await ai.models.generateContent({
+            model: 'gemini-3.6-flash',
+            contents: 'ping',
+            config: { maxOutputTokens: 1 },
+          });
+          return { key, valid: true };
+        } catch {
+          return { key, valid: false, reason: 'Key ditolak Google' };
+        }
+      })
+    );
+
+    return res.json({ results });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Gagal memverifikasi API key.' });
+  }
+});
+
 // API: Analyze Brief (Auto Mode)
 app.post('/api/analyze-brief', async (req, res) => {
   try {
@@ -97,58 +152,88 @@ app.post('/api/analyze-brief', async (req, res) => {
       return res.status(400).json({ error: 'Brief mentah wajib diisi.' });
     }
 
-    const visitorApiKey = req.headers['x-user-api-key'] as string | undefined;
-    const ai = getGeminiClient(visitorApiKey);
-    const prompt = buildAnalysisPrompt(rawBrief);
+    const candidateKeys = getAllCandidateKeys(req);
+    if (candidateKeys.length === 0) {
+      return res.status(400).json({
+        error: 'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.',
+      });
+    }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            projectName: { type: Type.STRING, description: 'Nama proyek atau bisnis' },
-            businessType: { type: Type.STRING, description: 'Bidang usaha atau industri' },
-            websiteType: {
-              type: Type.STRING,
-              description: 'Kategori website (Company Profile, E-Commerce / Catalog, SaaS / Service App, Agency / Portfolio, Educational / Community)',
+    const prompt = buildAnalysisPrompt(rawBrief);
+    let jsonText = '';
+    let lastError: any = null;
+
+    for (const apiKey of candidateKeys) {
+      try {
+        const ai = new GoogleGenAI({
+          apiKey,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build',
             },
-            targetAudience: { type: Type.STRING, description: 'Target pengguna / calon klien' },
-            goalWebsite: { type: Type.STRING, description: 'Tujuan utama website' },
-            primaryCTA: { type: Type.STRING, description: 'Call to Action utama (misal: WhatsApp)' },
-            primaryColor: { type: Type.STRING, description: 'Rekomendasi warna utama' },
-            colorTone: { type: Type.STRING, description: 'Tone warna canvas' },
-            typographyPairing: { type: Type.STRING, description: 'Pasangan font' },
-            visualStyle: { type: Type.STRING, description: 'Gaya visual' },
-            contentLanguage: { type: Type.STRING, description: 'Indonesian, English, atau Bilingual' },
-            specialRequirements: { type: Type.STRING, description: 'Kebutuhan khusus' },
-            suggestedPages: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  pageName: { type: Type.STRING },
-                  pageSlug: { type: Type.STRING },
-                  pageType: { type: Type.STRING },
-                  pagePurpose: { type: Type.STRING },
-                  keySections: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING },
-                  },
-                  isInMainNav: { type: Type.BOOLEAN },
+          },
+        });
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.6-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                projectName: { type: Type.STRING, description: 'Nama proyek atau bisnis' },
+                businessType: { type: Type.STRING, description: 'Bidang usaha atau industri' },
+                websiteType: {
+                  type: Type.STRING,
+                  description: 'Kategori website (Company Profile, E-Commerce / Catalog, SaaS / Service App, Agency / Portfolio, Educational / Community)',
                 },
-                required: ['pageName', 'pageSlug', 'pageType', 'pagePurpose', 'isInMainNav'],
+                targetAudience: { type: Type.STRING, description: 'Target pengguna / calon klien' },
+                goalWebsite: { type: Type.STRING, description: 'Tujuan utama website' },
+                primaryCTA: { type: Type.STRING, description: 'Call to Action utama (misal: WhatsApp)' },
+                primaryColor: { type: Type.STRING, description: 'Rekomendasi warna utama' },
+                colorTone: { type: Type.STRING, description: 'Tone warna canvas' },
+                typographyPairing: { type: Type.STRING, description: 'Pasangan font' },
+                visualStyle: { type: Type.STRING, description: 'Gaya visual' },
+                contentLanguage: { type: Type.STRING, description: 'Indonesian, English, atau Bilingual' },
+                specialRequirements: { type: Type.STRING, description: 'Kebutuhan khusus' },
+                suggestedPages: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      pageName: { type: Type.STRING },
+                      pageSlug: { type: Type.STRING },
+                      pageType: { type: Type.STRING },
+                      pagePurpose: { type: Type.STRING },
+                      keySections: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                      },
+                      isInMainNav: { type: Type.BOOLEAN },
+                    },
+                    required: ['pageName', 'pageSlug', 'pageType', 'pagePurpose', 'isInMainNav'],
+                  },
+                },
               },
             },
           },
-        },
-      },
-    });
+        });
 
-    const jsonText = response.text || '{}';
-    const parsed: BriefAnalysisResponse = JSON.parse(jsonText);
+        jsonText = response.text || '{}';
+        lastError = null;
+        break; // Success
+      } catch (err: any) {
+        lastError = err;
+        console.warn('API key candidate failed, trying next candidate key...');
+      }
+    }
+
+    if (!jsonText && lastError) {
+      throw lastError;
+    }
+
+    const parsed: BriefAnalysisResponse = JSON.parse(jsonText || '{}');
 
     return res.json({
       success: true,
@@ -169,21 +254,50 @@ app.post('/api/generate-prd', async (req, res) => {
       return res.status(400).json({ error: 'Data form PRD tidak ditemukan.' });
     }
 
-    const visitorApiKey = req.headers['x-user-api-key'] as string | undefined;
-    const ai = getGeminiClient(visitorApiKey);
+    const candidateKeys = getAllCandidateKeys(req);
+    if (candidateKeys.length === 0) {
+      return res.status(400).json({
+        error: 'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.',
+      });
+    }
+
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(formState);
+    let markdownOutput = '';
+    let lastError: any = null;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: userPrompt,
-      config: {
-        systemInstruction: systemPrompt,
-        temperature: 0.7,
-      },
-    });
+    for (const apiKey of candidateKeys) {
+      try {
+        const ai = new GoogleGenAI({
+          apiKey,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build',
+            },
+          },
+        });
 
-    const markdownOutput = response.text || '# PRD Generation Failed';
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.6-flash',
+          contents: userPrompt,
+          config: {
+            systemInstruction: systemPrompt,
+            temperature: 0.7,
+          },
+        });
+
+        markdownOutput = response.text || '# PRD Generation Failed';
+        lastError = null;
+        break; // Success
+      } catch (err: any) {
+        lastError = err;
+        console.warn('API key candidate failed, trying next candidate key...');
+      }
+    }
+
+    if (!markdownOutput && lastError) {
+      throw lastError;
+    }
 
     // Calculate readiness score & reasons based on PRD & Form quality
     const pageCount = formState.pages?.length || 0;
