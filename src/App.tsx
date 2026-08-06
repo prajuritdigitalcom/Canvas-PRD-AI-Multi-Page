@@ -5,7 +5,6 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { GeneratorForm } from './components/GeneratorForm';
 import { OutputView } from './components/OutputView';
-import { AboutView } from './components/AboutView';
 import { HistoryView } from './components/HistoryView';
 import { SettingsView } from './components/SettingsView';
 
@@ -42,7 +41,7 @@ const DEFAULT_FORM_STATE: ProjectFormState = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'generator' | 'history' | 'about' | 'settings'>('generator');
+  const [activeTab, setActiveTab] = useState<'generator' | 'history' | 'settings'>('generator');
   const [formState, setFormState] = useState<ProjectFormState>(DEFAULT_FORM_STATE);
   const [isGenerating, setIsGenerating] = useState(false);
   const [prdResult, setPrdResult] = useState<PRDGenerateResponse | null>(null);
@@ -264,8 +263,6 @@ export default function App() {
               onDeletePRD={handleDeleteSavedPRD}
             />
           )}
-
-          {activeTab === 'about' && <AboutView />}
 
           {activeTab === 'settings' && (
             <SettingsView

@@ -1,9 +1,9 @@
 import React from 'react';
-import { Layers, FileCode2, BookOpen, Settings, KeyRound } from 'lucide-react';
+import { Layers, FileCode2, Settings, KeyRound } from 'lucide-react';
 
 interface SidebarProps {
-  activeTab: 'generator' | 'history' | 'about' | 'settings';
-  onSelectTab: (tab: 'generator' | 'history' | 'about' | 'settings') => void;
+  activeTab: 'generator' | 'history' | 'settings';
+  onSelectTab: (tab: 'generator' | 'history' | 'settings') => void;
   savedPRDCount: number;
 }
 
@@ -22,12 +22,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, savedP
       icon: FileCode2,
       count: savedPRDCount,
       desc: 'PRD tersimpan di browser',
-    },
-    {
-      id: 'about' as const,
-      label: 'Panduan AI Studio',
-      icon: BookOpen,
-      desc: 'Cara pakainya di AI Studio',
     },
     {
       id: 'settings' as const,
