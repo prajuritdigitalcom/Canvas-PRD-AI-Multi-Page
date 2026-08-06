@@ -7,7 +7,7 @@ import { GeneratorForm } from './components/GeneratorForm';
 import { OutputView } from './components/OutputView';
 import { AboutView } from './components/AboutView';
 import { HistoryView } from './components/HistoryView';
-import { SettingsModal } from './components/SettingsModal';
+import { SettingsView } from './components/SettingsView';
 
 const DEFAULT_PAGES: PageDefinition[] = PAGE_PRESETS[0].pages.map((p, idx) => ({
   ...p,
@@ -49,7 +49,33 @@ export default function App() {
   const [savedPRDs, setSavedPRDs] = useState<SavedPRD[]>([]);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [isPRDSaved, setIsPRDSaved] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const [visitorApiKey, setVisitorApiKey] = useState<string>(() => {
+    return sessionStorage.getItem('canvas_prd_visitor_api_key') || '';
+  });
+  const [hasSystemApiKey, setHasSystemApiKey] = useState(true);
+
+  // Check server API key status on mount
+  useEffect(() => {
+    fetch('/api/status')
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.hasSystemApiKey === 'boolean') {
+          setHasSystemApiKey(data.hasSystemApiKey);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveVisitorApiKey = (key: string) => {
+    sessionStorage.setItem('canvas_prd_visitor_api_key', key);
+    setVisitorApiKey(key);
+  };
+
+  const handleClearVisitorApiKey = () => {
+    sessionStorage.removeItem('canvas_prd_visitor_api_key');
+    setVisitorApiKey('');
+  };
 
   // Load saved PRDs and Draft on initial mount
   useEffect(() => {
@@ -103,7 +129,10 @@ export default function App() {
     try {
       const response = await fetch('/api/generate-prd', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(visitorApiKey ? { 'x-user-api-key': visitorApiKey } : {}),
+        },
         body: JSON.stringify(formState),
       });
 
@@ -170,7 +199,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#fe4c6f] selection:text-white">
       {/* Top Header */}
       <Header
         onNewPRD={handleNewPRD}
@@ -186,13 +215,7 @@ export default function App() {
         {/* Navigation Sidebar */}
         <Sidebar
           activeTab={activeTab}
-          onSelectTab={(tab) => {
-            if (tab === 'settings') {
-              setIsSettingsOpen(true);
-            } else {
-              setActiveTab(tab);
-            }
-          }}
+          onSelectTab={(tab) => setActiveTab(tab)}
           savedPRDCount={savedPRDs.length}
         />
 
@@ -202,15 +225,15 @@ export default function App() {
             <div className="space-y-8">
               {/* Hero Banner when no PRD generated yet */}
               {!prdResult && (
-                <div className="bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 md:p-8 backdrop-blur-md text-center max-w-4xl mx-auto space-y-3">
-                  <span className="px-3.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold uppercase tracking-wider inline-block">
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 text-center max-w-4xl mx-auto space-y-3 shadow-xs">
+                  <span className="px-3.5 py-1 rounded-full bg-[#fe4c6f]/10 text-[#fe4c6f] border border-[#fe4c6f]/20 text-xs font-bold uppercase tracking-wider inline-block">
                     PRODUK V2.0 — MULTI-PAGE GENERATOR
                   </span>
-                  <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
                     Ubah Brief Mentah Menjadi PRD Multi-Halaman untuk Google AI Studio
                   </h2>
-                  <p className="text-xs md:text-sm text-slate-300 leading-relaxed max-w-2xl mx-auto">
-                    Aplikasi ini membantu Anda merancang arsitektur website multi-halaman (Home, About, Services, Blog, Contact, dll.) dan menghasilkan PRD bertaraf profesional yang dapat dicopy-paste langsung ke <strong className="text-white">Google AI Studio (mode Build)</strong>.
+                  <p className="text-xs md:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                    Aplikasi ini membantu Anda merancang arsitektur website multi-halaman (Home, About, Services, Blog, Contact, dll.) dan menghasilkan PRD bertaraf profesional yang dapat dicopy-paste langsung ke <strong className="text-slate-900">Google AI Studio (mode Build)</strong>.
                   </p>
                 </div>
               )}
@@ -230,6 +253,7 @@ export default function App() {
                   onChangeForm={setFormState}
                   onSubmitGenerate={handleGeneratePRD}
                   isGenerating={isGenerating}
+                  visitorApiKey={visitorApiKey}
                 />
               )}
             </div>
@@ -244,11 +268,17 @@ export default function App() {
           )}
 
           {activeTab === 'about' && <AboutView />}
+
+          {activeTab === 'settings' && (
+            <SettingsView
+              visitorApiKey={visitorApiKey}
+              onSaveVisitorApiKey={handleSaveVisitorApiKey}
+              onClearVisitorApiKey={handleClearVisitorApiKey}
+              hasSystemApiKey={hasSystemApiKey}
+            />
+          )}
         </main>
       </div>
-
-      {/* Settings Modal */}
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

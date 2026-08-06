@@ -1,7 +1,7 @@
 import React from 'react';
 import { PageDefinition, PageType, ProjectFormState } from '../types';
 import { PAGE_PRESETS } from '../data/pagePresets';
-import { Plus, Trash2, ArrowUp, ArrowDown, Layout, Globe, Sparkles, Check, Info } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Layout, Globe, Sparkles, Info } from 'lucide-react';
 
 interface PageBuilderProps {
   pages: PageDefinition[];
@@ -42,7 +42,6 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
     const updated = pages.map((p) => {
       if (p.id === id) {
         const next = { ...p, ...updates };
-        // Auto generate slug if pageName changed and slug wasn't manually customized heavily
         if (updates.pageName && (!p.pageSlug || p.pageSlug === '/' || p.pageSlug === `/${slugify(p.pageName)}`)) {
           next.pageSlug = updates.pageName.toLowerCase() === 'home' || updates.pageName.toLowerCase() === 'beranda' 
             ? '/' 
@@ -108,20 +107,20 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
   ];
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm mb-1">
-            <Layout className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
+            <Layout className="w-4 h-4 text-[#fe4c6f]" />
             <span>ARSIREKTUR MULTI-HALAMAN</span>
           </div>
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+          <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
             Page Builder & Routing Map
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#fe4c6f]/10 text-[#fe4c6f] font-bold border border-[#fe4c6f]/20">
               {pages.length} Halaman
             </span>
           </h3>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Susun daftar halaman yang akan dibangun secara fisik (\`src/pages/*.tsx\`) dalam proyek React + Vite Anda.
           </p>
         </div>
@@ -131,13 +130,13 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
           <div className="relative group">
             <button
               type="button"
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-2 transition-all shadow-sm"
+              className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200 flex items-center gap-2 transition-all shadow-xs"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Sparkles className="w-3.5 h-3.5 text-[#fe4c6f]" />
               <span>Gunakan Preset Halaman</span>
             </button>
-            <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-2 hidden group-hover:block z-50">
-              <div className="text-[11px] font-semibold text-slate-400 px-3 py-1.5 border-b border-slate-700/60 uppercase tracking-wider">
+            <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl p-2 hidden group-hover:block z-50">
+              <div className="text-[11px] font-bold text-slate-400 px-3 py-1.5 border-b border-slate-100 uppercase tracking-wider">
                 Pilih Preset Sesuai Kebutuhan
               </div>
               <div className="py-1 space-y-1">
@@ -146,10 +145,10 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                     key={p.id}
                     type="button"
                     onClick={() => applyPreset(p.id)}
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-600/20 hover:text-indigo-200 text-slate-300 text-xs flex flex-col gap-0.5 transition-colors"
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fe4c6f]/10 hover:text-[#fe4c6f] text-slate-700 text-xs flex flex-col gap-0.5 transition-colors"
                   >
-                    <span className="font-semibold text-slate-100">{p.name}</span>
-                    <span className="text-[10px] text-slate-400 line-clamp-1">{p.description}</span>
+                    <span className="font-bold text-slate-900">{p.name}</span>
+                    <span className="text-[10px] text-slate-500 line-clamp-1">{p.description}</span>
                   </button>
                 ))}
               </div>
@@ -159,7 +158,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
           <button
             type="button"
             onClick={addPage}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+            className="px-4 py-2 rounded-xl bg-[#fe4c6f] hover:bg-[#e03b5b] text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Halaman</span>
@@ -168,8 +167,8 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
       </div>
 
       {pages.length < 2 && (
-        <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 text-amber-300 p-3.5 rounded-xl text-xs">
-          <Info className="w-4 h-4 text-amber-400 shrink-0" />
+        <div className="flex items-center gap-3 bg-pink-50 border border-pink-200 text-slate-800 p-3.5 rounded-xl text-xs font-medium">
+          <Info className="w-4 h-4 text-[#fe4c6f] shrink-0" />
           <span>
             Website bisnis idealnya memiliki minimal 2-5 halaman (misal: Home, Tentang Kami, Layanan, Kontak) agar memberikan impresi profesional di Google AI Studio.
           </span>
@@ -181,11 +180,11 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
         {pages.map((page, index) => (
           <div
             key={page.id}
-            className="bg-slate-950/60 border border-slate-800 hover:border-slate-700 rounded-xl p-4.5 transition-all space-y-4"
+            className="bg-slate-50/70 border border-slate-200 hover:border-pink-300 rounded-xl p-4.5 transition-all space-y-4"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
               <div className="flex items-center gap-2.5">
-                <span className="w-6 h-6 rounded-lg bg-indigo-950 text-indigo-400 text-xs font-bold flex items-center justify-center border border-indigo-800/40">
+                <span className="w-6 h-6 rounded-lg bg-[#fe4c6f]/10 text-[#fe4c6f] text-xs font-black flex items-center justify-center border border-[#fe4c6f]/20">
                   {index + 1}
                 </span>
                 <input
@@ -193,7 +192,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                   value={page.pageName}
                   onChange={(e) => updatePage(page.id, { pageName: e.target.value })}
                   placeholder="Nama Halaman (cth: Tentang Kami)"
-                  className="bg-transparent font-bold text-white text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded px-2 py-0.5 border border-transparent hover:border-slate-800"
+                  className="bg-white font-extrabold text-slate-900 text-base focus:outline-none focus:ring-1 focus:ring-[#fe4c6f] rounded px-2 py-0.5 border border-slate-200"
                 />
                 <span className="text-xs text-slate-500 font-mono hidden md:inline">
                   {page.pageSlug}
@@ -201,22 +200,22 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg hover:border-slate-700">
+                <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer bg-white border border-slate-200 px-2.5 py-1 rounded-lg hover:border-pink-300">
                   <input
                     type="checkbox"
                     checked={page.isInMainNav}
                     onChange={(e) => updatePage(page.id, { isInMainNav: e.target.checked })}
-                    className="rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-slate-300 text-[#fe4c6f] focus:ring-[#fe4c6f]"
                   />
                   <span>Tampil di Nav Utama</span>
                 </label>
 
-                <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+                <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5">
                   <button
                     type="button"
                     onClick={() => movePage(index, 'up')}
                     disabled={index === 0}
-                    className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                    className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
                     title="Naikkan urutan"
                   >
                     <ArrowUp className="w-3.5 h-3.5" />
@@ -225,7 +224,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                     type="button"
                     onClick={() => movePage(index, 'down')}
                     disabled={index === pages.length - 1}
-                    className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                    className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
                     title="Turunkan urutan"
                   >
                     <ArrowDown className="w-3.5 h-3.5" />
@@ -235,7 +234,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                 <button
                   type="button"
                   onClick={() => removePage(page.id)}
-                  className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                   title="Hapus Halaman"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -246,25 +245,25 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
             {/* Inputs grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
               <div>
-                <label className="block text-slate-400 font-medium mb-1">URL Path / Slug</label>
+                <label className="block text-slate-600 font-semibold mb-1">URL Path / Slug</label>
                 <div className="relative">
-                  <Globe className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                  <Globe className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
                   <input
                     type="text"
                     value={page.pageSlug}
                     onChange={(e) => updatePage(page.id, { pageSlug: e.target.value })}
                     placeholder="/layanan"
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-slate-900 font-mono text-xs focus:outline-none focus:border-[#fe4c6f]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Tipe Halaman</label>
+                <label className="block text-slate-600 font-semibold mb-1">Tipe Halaman</label>
                 <select
                   value={page.pageType}
                   onChange={(e) => updatePage(page.id, { pageType: e.target.value as PageType })}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:border-[#fe4c6f]"
                 >
                   {PAGE_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -275,7 +274,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
               </div>
 
               <div className="sm:col-span-2 md:col-span-1">
-                <label className="block text-slate-400 font-medium mb-1">Section Kunci (Dipisah koma)</label>
+                <label className="block text-slate-600 font-semibold mb-1">Section Kunci (Dipisah koma)</label>
                 <input
                   type="text"
                   value={page.keySections.join(', ')}
@@ -285,18 +284,18 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                     })
                   }
                   placeholder="Hero, Grid Layanan, Testimoni, CTA"
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:border-[#fe4c6f]"
                 />
               </div>
 
               <div className="sm:col-span-2 md:col-span-3">
-                <label className="block text-slate-400 font-medium mb-1">Tujuan & Fungsi Halaman Ini</label>
+                <label className="block text-slate-600 font-semibold mb-1">Tujuan & Fungsi Halaman Ini</label>
                 <textarea
                   rows={2}
                   value={page.pagePurpose}
                   onChange={(e) => updatePage(page.id, { pagePurpose: e.target.value })}
                   placeholder="Jelaskan peran halaman ini untuk pengunjung (cth: Menampilkan seluruh katalog produk lengkap dengan filter)..."
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 resize-none"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:border-[#fe4c6f] resize-none"
                 />
               </div>
             </div>
@@ -306,3 +305,4 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
     </div>
   );
 };
+

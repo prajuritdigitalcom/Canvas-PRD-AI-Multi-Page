@@ -14,8 +14,6 @@ import {
   FileText,
   BookmarkPlus,
   BookmarkCheck,
-  ChevronRight,
-  ExternalLink,
   Layers,
 } from 'lucide-react';
 
@@ -46,7 +44,6 @@ export const OutputView: React.FC<OutputViewProps> = ({
     if (match && match[1]) {
       return match[1].trim();
     }
-    // Fallback if no block match
     const sectionIndex = markdown.indexOf('## 13. Final Instruction');
     if (sectionIndex !== -1) {
       return markdown.substring(sectionIndex).trim();
@@ -91,25 +88,25 @@ export const OutputView: React.FC<OutputViewProps> = ({
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Top Banner & Quick Actions */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 backdrop-blur-md space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div>
-            <div className="flex items-center gap-2 text-cyan-400 font-semibold text-xs mb-1">
-              <Sparkles className="w-4 h-4" />
+            <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
+              <Sparkles className="w-4 h-4 text-[#fe4c6f]" />
               <span>PRD MULTI-HALAMAN HASIL GENERATE</span>
             </div>
-            <h2 className="text-2xl font-black text-white">
+            <h2 className="text-2xl font-black text-slate-900">
               {formState.projectName || 'PRD Website Multi-Halaman'}
             </h2>
             <div className="flex flex-wrap items-center gap-2.5 mt-2 text-xs">
-              <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full bg-[#fe4c6f]/10 text-[#fe4c6f] border border-[#fe4c6f]/20 font-bold flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5" />
                 {pageCount} Halaman Terdefinisi
               </span>
-              <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold">
+              <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-800 font-semibold border border-slate-200">
                 Google AI Studio Build Mode
               </span>
-              <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                 {formState.websiteType}
               </span>
             </div>
@@ -119,9 +116,9 @@ export const OutputView: React.FC<OutputViewProps> = ({
             <button
               type="button"
               onClick={onEdit}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200 flex items-center gap-1.5 transition-all shadow-xs"
             >
-              <Edit3 className="w-4 h-4 text-indigo-400" />
+              <Edit3 className="w-4 h-4 text-[#fe4c6f]" />
               <span>Edit Form</span>
             </button>
 
@@ -131,18 +128,18 @@ export const OutputView: React.FC<OutputViewProps> = ({
               disabled={isSaved}
               className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border ${
                 isSaved
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 cursor-default'
-                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 cursor-default'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800 shadow-xs'
               }`}
             >
               {isSaved ? (
                 <>
-                  <BookmarkCheck className="w-4 h-4 text-emerald-400" />
+                  <BookmarkCheck className="w-4 h-4 text-emerald-600" />
                   <span>Tersimpan</span>
                 </>
               ) : (
                 <>
-                  <BookmarkPlus className="w-4 h-4 text-amber-400" />
+                  <BookmarkPlus className="w-4 h-4 text-amber-500" />
                   <span>Simpan ke Riwayat</span>
                 </>
               )}
@@ -151,22 +148,22 @@ export const OutputView: React.FC<OutputViewProps> = ({
             <button
               type="button"
               onClick={handleDownloadMarkdown}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200 flex items-center gap-1.5 transition-all shadow-xs"
             >
-              <Download className="w-4 h-4 text-cyan-400" />
+              <Download className="w-4 h-4 text-[#fe4c6f]" />
               <span>Unduh .md</span>
             </button>
           </div>
         </div>
 
         {/* Master Prompt Call-To-Action Box */}
-        <div className="bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-950 border border-indigo-500/40 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+        <div className="bg-gradient-to-r from-rose-500 to-[#fe4c6f] border border-[#fe4c6f] rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md text-white">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-indigo-300 font-bold text-sm">
-              <Code2 className="w-4 h-4 text-cyan-400" />
+            <div className="flex items-center gap-2 text-white font-extrabold text-sm">
+              <Code2 className="w-4 h-4 text-pink-100" />
               <span>MASTER PROMPT UNTUK GOOGLE AI STUDIO</span>
             </div>
-            <p className="text-xs text-slate-300 max-w-2xl">
+            <p className="text-xs text-pink-100 max-w-2xl leading-relaxed">
               Salin Master Prompt ini dan tempelkan langsung ke <strong>Google AI Studio (mode Build)</strong> untuk membuat seluruh file React+Vite multi-halaman secara fisik!
             </p>
           </div>
@@ -175,16 +172,16 @@ export const OutputView: React.FC<OutputViewProps> = ({
             <button
               type="button"
               onClick={handleCopyMasterPrompt}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all active:scale-95"
+              className="px-5 py-2.5 rounded-xl bg-white text-[#fe4c6f] hover:bg-pink-50 font-black text-xs shadow-md flex items-center gap-2 transition-all active:scale-95"
             >
               {copiedMasterPrompt ? (
                 <>
-                  <Check className="w-4 h-4 text-emerald-300" />
+                  <Check className="w-4 h-4 text-emerald-600" />
                   <span>Master Prompt Tersalin!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-4 h-4 text-[#fe4c6f]" />
                   <span>Copy Master Prompt (Sekali Klik)</span>
                 </>
               )}
@@ -193,13 +190,13 @@ export const OutputView: React.FC<OutputViewProps> = ({
             <button
               type="button"
               onClick={handleCopyFullPRD}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-2.5 rounded-xl bg-black/20 hover:bg-black/30 text-white font-semibold text-xs border border-white/20 flex items-center gap-1.5 transition-all"
               title="Salin Seluruh PRD Lengkap"
             >
               {copiedFull ? (
-                <Check className="w-4 h-4 text-emerald-400" />
+                <Check className="w-4 h-4 text-emerald-300" />
               ) : (
-                <FileText className="w-4 h-4 text-slate-400" />
+                <FileText className="w-4 h-4 text-pink-200" />
               )}
               <span className="hidden md:inline">{copiedFull ? 'Tersalin' : 'Copy PRD Utuh'}</span>
             </button>
@@ -208,13 +205,13 @@ export const OutputView: React.FC<OutputViewProps> = ({
 
         {/* Readiness Score Breakdown */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-2">
-            <span className="text-xs font-semibold text-slate-400">Skor Kesiapan Build (AI Studio)</span>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between space-y-2">
+            <span className="text-xs font-semibold text-slate-600">Skor Kesiapan Build (AI Studio)</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-black text-white">{readyScore}</span>
-              <span className="text-xs text-slate-400">/ 100</span>
+              <span className="text-4xl font-black text-slate-900">{readyScore}</span>
+              <span className="text-xs text-slate-500">/ 100</span>
             </div>
-            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-1000 ${
                   readyScore >= 80 ? 'bg-emerald-500' : readyScore >= 60 ? 'bg-amber-500' : 'bg-red-500'
@@ -224,18 +221,18 @@ export const OutputView: React.FC<OutputViewProps> = ({
             </div>
           </div>
 
-          <div className="md:col-span-2 bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-2 text-xs">
-            <span className="font-semibold text-slate-300 block">Evaluasi Kelengkapan Struktur:</span>
+          <div className="md:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 text-xs">
+            <span className="font-bold text-slate-800 block">Evaluasi Kelengkapan Struktur:</span>
             <div className="space-y-1.5">
               {scoreReasons.passed.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-emerald-300">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <div key={idx} className="flex items-start gap-2 text-emerald-800 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                   <span>{item}</span>
                 </div>
               ))}
               {scoreReasons.warnings.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-amber-300">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <div key={idx} className="flex items-start gap-2 text-amber-800 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
                   <span>{item}</span>
                 </div>
               ))}
@@ -245,11 +242,12 @@ export const OutputView: React.FC<OutputViewProps> = ({
       </div>
 
       {/* PRD Document Content */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 md:p-10 backdrop-blur-md shadow-2xl overflow-x-auto">
-        <div className="prose prose-invert max-w-none prose-headings:font-bold prose-headings:text-slate-100 prose-h1:text-2xl prose-h1:border-b prose-h1:border-slate-800 prose-h1:pb-3 prose-h2:text-xl prose-h2:text-indigo-300 prose-h2:border-b prose-h2:border-slate-800/60 prose-h2:pb-2 prose-h3:text-lg prose-h3:text-cyan-300 prose-p:text-slate-300 prose-p:leading-relaxed prose-li:text-slate-300 prose-table:border-collapse prose-th:bg-slate-950 prose-th:p-3 prose-th:border prose-th:border-slate-800 prose-td:p-3 prose-td:border prose-td:border-slate-800 prose-code:text-cyan-300 prose-code:bg-slate-950 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-10 shadow-xs overflow-x-auto">
+        <div className="prose max-w-none prose-headings:font-extrabold prose-headings:text-slate-900 prose-h1:text-2xl prose-h1:border-b prose-h1:border-slate-200 prose-h1:pb-3 prose-h2:text-xl prose-h2:text-[#fe4c6f] prose-h2:border-b prose-h2:border-slate-100 prose-h2:pb-2 prose-h3:text-lg prose-h3:text-slate-800 prose-p:text-slate-700 prose-p:leading-relaxed prose-li:text-slate-700 prose-table:border-collapse prose-th:bg-slate-100 prose-th:p-3 prose-th:border prose-th:border-slate-200 prose-td:p-3 prose-td:border prose-td:border-slate-200 prose-code:text-[#fe4c6f] prose-code:bg-pink-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
         </div>
       </div>
     </div>
   );
 };
+

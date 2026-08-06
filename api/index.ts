@@ -11,10 +11,12 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 // Helper to instantiate Gemini client
-const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+const getGeminiClient = (visitorApiKey?: string) => {
+  const apiKey = process.env.GEMINI_API_KEY?.trim() || visitorApiKey?.trim();
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is missing in environment variables.');
+    throw new Error(
+      'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.'
+    );
   }
   return new GoogleGenAI({
     apiKey,
@@ -31,6 +33,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// API Server & Key Status Check
+app.get('/api/status', (req, res) => {
+  const hasSystemApiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
+  res.json({ status: 'ok', hasSystemApiKey });
+});
+
 // API: Analyze Brief (Auto Mode)
 app.post('/api/analyze-brief', async (req, res) => {
   try {
@@ -39,7 +47,8 @@ app.post('/api/analyze-brief', async (req, res) => {
       return res.status(400).json({ error: 'Brief mentah wajib diisi.' });
     }
 
-    const ai = getGeminiClient();
+    const visitorApiKey = req.headers['x-user-api-key'] as string | undefined;
+    const ai = getGeminiClient(visitorApiKey);
     const prompt = buildAnalysisPrompt(rawBrief);
 
     const response = await ai.models.generateContent({
@@ -110,7 +119,8 @@ app.post('/api/generate-prd', async (req, res) => {
       return res.status(400).json({ error: 'Data form PRD tidak ditemukan.' });
     }
 
-    const ai = getGeminiClient();
+    const visitorApiKey = req.headers['x-user-api-key'] as string | undefined;
+    const ai = getGeminiClient(visitorApiKey);
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(formState);
 

@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+@theme {
+  --color-pink-primary: #fe4c6f;
+  --color-pink-hover: #e03b5b;
+  --color-pink-soft: #fff0f3;
+  --color-pink-light: #fef2f4;
+  --color-pink-border: #fecdd3;
+  --color-brand-pink: #fe4c6f;
+}
+
+body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+

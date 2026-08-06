@@ -5,17 +5,11 @@ import { SharedLayoutForm } from './SharedLayoutForm';
 import {
   Sparkles,
   Building2,
-  Target,
   Palette,
-  Type,
   FileText,
   Loader2,
   Wand2,
-  Globe2,
-  Layers,
-  Compass,
   ArrowRight,
-  Info,
 } from 'lucide-react';
 
 interface GeneratorFormProps {
@@ -23,6 +17,7 @@ interface GeneratorFormProps {
   onChangeForm: (form: ProjectFormState) => void;
   onSubmitGenerate: () => void;
   isGenerating: boolean;
+  visitorApiKey: string;
 }
 
 export const GeneratorForm: React.FC<GeneratorFormProps> = ({
@@ -30,6 +25,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   onChangeForm,
   onSubmitGenerate,
   isGenerating,
+  visitorApiKey,
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeSuccess, setAnalyzeSuccess] = useState(false);
@@ -50,7 +46,10 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     try {
       const response = await fetch('/api/analyze-brief', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(visitorApiKey ? { 'x-user-api-key': visitorApiKey } : {}),
+        },
         body: JSON.stringify({ rawBrief: formState.rawBrief }),
       });
 
@@ -116,23 +115,23 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       className="space-y-8 max-w-5xl mx-auto"
     >
       {/* SECTION 1: Brief & Informasi Proyek */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm space-y-6">
-        <div className="border-b border-slate-800 pb-4">
-          <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm mb-1">
-            <Building2 className="w-4 h-4" />
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+        <div className="border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
+            <Building2 className="w-4 h-4 text-[#fe4c6f]" />
             <span>INFORMASI UTAMA & BRIEF</span>
           </div>
-          <h2 className="text-xl font-bold text-white">Profil Bisnis & Deskripsi Brief Mentah</h2>
-          <p className="text-sm text-slate-400 mt-1">
+          <h2 className="text-xl font-extrabold text-slate-900">Profil Bisnis & Deskripsi Brief Mentah</h2>
+          <p className="text-sm text-slate-500 mt-1">
             Tuliskan ide bisnis atau salin brief dari klien. Mode Auto AI dapat membantu mengekstrak informasi dan mengusulkan halaman secara otomatis.
           </p>
         </div>
 
         {/* Brief Textarea & Auto Analyze Button */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="block text-slate-200 font-semibold text-sm flex items-center gap-2">
-              <FileText className="w-4 h-4 text-indigo-400" />
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <label className="block text-slate-800 font-bold text-sm flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#fe4c6f]" />
               <span>Deskripsi Brief Mentah</span>
             </label>
 
@@ -141,7 +140,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 type="button"
                 onClick={handleAnalyzeBrief}
                 disabled={isAnalyzing}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all disabled:opacity-50"
+                className="px-3.5 py-1.5 rounded-xl bg-[#fe4c6f] hover:bg-[#e03b5b] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
               >
                 {isAnalyzing ? (
                   <>
@@ -163,12 +162,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             value={formState.rawBrief}
             onChange={(e) => updateForm({ rawBrief: e.target.value })}
             placeholder="Contoh: Kami adalah perusahaan jasa konsultasi pajak & akuntansi di Jakarta 'KonsultanPajakKu'. Kami butuh website profesional multi-halaman untuk calon klien korporat. Halaman yang dibutuhkan: Home, Profil Perusahaan, Layanan Pajak, Studi Kasus, Blog Artikel, dan Kontak Kami dengan form konsultasi gratis..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-200 text-sm focus:outline-none focus:border-indigo-500 transition-colors resize-y"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-[#fe4c6f] focus:ring-1 focus:ring-[#fe4c6f] transition-all resize-y"
           />
 
           {analyzeSuccess && (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
               <span>
                 Berhasil menganalisis brief! Profil bisnis dan struktur {formState.pages.length} halaman otomatis disesuaikan.
               </span>
@@ -179,33 +178,33 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         {/* Project Profile Inputs Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Nama Proyek / Merek</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Nama Proyek / Merek</label>
             <input
               type="text"
               value={formState.projectName}
               onChange={(e) => updateForm({ projectName: e.target.value })}
               placeholder="Contoh: KonsultanPajakKu"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Jenis Bisnis / Industri</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Jenis Bisnis / Industri</label>
             <input
               type="text"
               value={formState.businessType}
               onChange={(e) => updateForm({ businessType: e.target.value })}
               placeholder="Contoh: Jasa Konsultan Keuangan & Pajak"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Kategori Website</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Kategori Website</label>
             <select
               value={formState.websiteType}
               onChange={(e) => updateForm({ websiteType: e.target.value as any })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             >
               {WEBSITE_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -216,35 +215,35 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Target Audiens</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Target Audiens</label>
             <input
               type="text"
               value={formState.targetAudience}
               onChange={(e) => updateForm({ targetAudience: e.target.value })}
               placeholder="Contoh: Pemilik UMKM, Direktur Perusahaan, Tim Finance"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Goal Utama Website</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Goal Utama Website</label>
             <input
               type="text"
               value={formState.goalWebsite}
               onChange={(e) => updateForm({ goalWebsite: e.target.value })}
               placeholder="Contoh: Mendapatkan leads konsultasi gratis & membangun reputasi"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Call To Action (CTA) Utama</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Call To Action (CTA) Utama</label>
             <input
               type="text"
               value={formState.primaryCTA}
               onChange={(e) => updateForm({ primaryCTA: e.target.value })}
               placeholder="Contoh: Konsultasi Gratis via WhatsApp"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>
         </div>
@@ -264,36 +263,36 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       />
 
       {/* SECTION 4: Design & Branding Preferences */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm space-y-6">
-        <div className="border-b border-slate-800 pb-4">
-          <div className="flex items-center gap-2 text-indigo-400 font-semibold text-xs mb-1">
-            <Palette className="w-4 h-4" />
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+        <div className="border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
+            <Palette className="w-4 h-4 text-[#fe4c6f]" />
             <span>IDENTITAS VISUAL & BRANDING</span>
           </div>
-          <h3 className="text-xl font-bold text-white">Gaya Desain, Warna & Tipografi</h3>
-          <p className="text-sm text-slate-400 mt-1">
+          <h3 className="text-xl font-extrabold text-slate-900">Gaya Desain, Warna & Tipografi</h3>
+          <p className="text-sm text-slate-500 mt-1">
             Menentukan aturan visual agar konsisten di seluruh halaman website multi-page.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Warna Aksen Utama</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Warna Aksen Utama</label>
             <input
               type="text"
               value={formState.primaryColor}
               onChange={(e) => updateForm({ primaryColor: e.target.value })}
-              placeholder="Contoh: Navy Blue & Gold Accent"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              placeholder="Contoh: Primary Pink (#fe4c6f) & Soft Cream"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Tone Warna Canvas</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Tone Warna Canvas</label>
             <select
               value={formState.colorTone}
               onChange={(e) => updateForm({ colorTone: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             >
               <option value="Clean & Bright (Light theme)">Clean & Bright (Light theme)</option>
               <option value="Modern Dark Theme">Modern Dark Theme</option>
@@ -303,11 +302,11 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Pasangan Tipografi (Font)</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Pasangan Tipografi (Font)</label>
             <select
               value={formState.typographyPairing}
               onChange={(e) => updateForm({ typographyPairing: e.target.value })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             >
               <option value="Plus Jakarta Sans (Body) + Playfair Display (Heading)">
                 Plus Jakarta Sans + Playfair Display (Elegan)
@@ -319,11 +318,11 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1.5">Bahasa Konten Utama</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Bahasa Konten Utama</label>
             <select
               value={formState.contentLanguage}
               onChange={(e) => updateForm({ contentLanguage: e.target.value as any })}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             >
               <option value="Indonesian">Bahasa Indonesia</option>
               <option value="English">English</option>
@@ -332,13 +331,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-slate-300 font-medium mb-1.5">Persyaratan Khusus</label>
+            <label className="block text-slate-700 font-semibold mb-1.5">Persyaratan Khusus</label>
             <input
               type="text"
               value={formState.specialRequirements}
               onChange={(e) => updateForm({ specialRequirements: e.target.value })}
               placeholder="Contoh: Integrasi WhatsApp pendaftaran, desain ramah mobile, animasi halus..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>
         </div>
@@ -349,18 +348,18 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         <button
           type="submit"
           disabled={isGenerating}
-          className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-black text-base shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all transform active:scale-[0.99] disabled:opacity-50"
+          className="w-full py-4 px-6 rounded-2xl bg-[#fe4c6f] hover:bg-[#e03b5b] text-white font-black text-base shadow-xl shadow-[#fe4c6f]/20 flex items-center justify-center gap-3 transition-all transform active:scale-[0.99] disabled:opacity-50"
         >
           {isGenerating ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin text-cyan-200" />
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
               <span>Menyusun Multi-Page PRD dengan Gemini 3.6 Flash...</span>
             </>
           ) : (
             <>
-              <Sparkles className="w-5 h-5 text-amber-300" />
+              <Sparkles className="w-5 h-5 text-amber-200" />
               <span>Generate PRD Multi-Halaman untuk Google AI Studio</span>
-              <ArrowRight className="w-5 h-5 text-cyan-200" />
+              <ArrowRight className="w-5 h-5 text-white" />
             </>
           )}
         </button>
@@ -368,3 +367,4 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     </form>
   );
 };
+
