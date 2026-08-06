@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, FileCode2, BookOpen, Settings, Code, ExternalLink } from 'lucide-react';
+import { Layers, FileCode2, BookOpen, Settings, KeyRound } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: 'generator' | 'history' | 'about' | 'settings';
@@ -39,16 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, savedP
 
   return (
     <aside className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-4 shrink-0 flex flex-col justify-between gap-6 shadow-xs">
-      <div className="space-y-6">
-        <div className="px-2 hidden lg:block">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-            NAVIGASI APLIKASI
-          </div>
-          <div className="text-xs text-slate-600 font-medium">
-            Prajurit Digital - AI Studio PRD
-          </div>
-        </div>
-
+      <div className="space-y-4">
         <nav className="space-y-1.5">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -96,26 +87,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onSelectTab, savedP
         </nav>
       </div>
 
-      {/* Target platform footer info */}
-      <div className="bg-pink-50/60 border border-pink-100 rounded-2xl p-4 space-y-3">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-          <Code className="w-4 h-4 text-[#fe4c6f]" />
-          <span>Target Deployment</span>
+      {/* Gemini API Key Status Card */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
+        <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-[#fe4c6f]" />
+          <span>Status API Key Gemini</span>
         </div>
-        <p className="text-[11px] text-slate-600 leading-relaxed">
-          PRD ini dirancang khusus untuk ditempel ke <strong className="text-slate-900">Google AI Studio (Build mode)</strong> untuk menghasilkan aplikasi React + Vite multi-halaman.
-        </p>
-        <a
-          href="https://ai.studio/build"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-bold text-[#fe4c6f] hover:text-[#e03b5b] flex items-center gap-1.5 pt-2 border-t border-pink-200/60"
-        >
-          <span>Buka Google AI Studio</span>
-          <ExternalLink className="w-3 h-3" />
-        </a>
+        <div className="space-y-2 text-xs pt-2 border-t border-slate-200/80">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600 font-medium text-[11px]">Server</span>
+            <span className="inline-flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Aktif (9)
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600 font-medium text-[11px]">Backup</span>
+            <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
+              Kosong
+            </span>
+          </div>
+        </div>
       </div>
     </aside>
   );
 };
+
 

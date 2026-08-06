@@ -203,8 +203,6 @@ export default function App() {
       {/* Top Header */}
       <Header
         onNewPRD={handleNewPRD}
-        savedCount={savedPRDs.length}
-        onOpenHistory={() => setActiveTab('history')}
         lastSavedAt={lastSavedAt}
         aiMode={formState.aiMode}
         onToggleAiMode={(mode) => setFormState({ ...formState, aiMode: mode })}
@@ -225,14 +223,14 @@ export default function App() {
             <div className="space-y-8">
               {/* Hero Banner when no PRD generated yet */}
               {!prdResult && (
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 text-center max-w-4xl mx-auto space-y-3 shadow-xs">
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 text-center max-w-5xl mx-auto space-y-3 shadow-xs">
                   <span className="px-3.5 py-1 rounded-full bg-[#fe4c6f]/10 text-[#fe4c6f] border border-[#fe4c6f]/20 text-xs font-bold uppercase tracking-wider inline-block">
                     PRODUK V2.0 — MULTI-PAGE GENERATOR
                   </span>
                   <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
                     Ubah Brief Mentah Menjadi PRD Multi-Halaman untuk Google AI Studio
                   </h2>
-                  <p className="text-xs md:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                  <p className="text-xs md:text-sm text-slate-600 leading-relaxed max-w-3xl mx-auto">
                     Aplikasi ini membantu Anda merancang arsitektur website multi-halaman (Home, About, Services, Blog, Contact, dll.) dan menghasilkan PRD bertaraf profesional yang dapat dicopy-paste langsung ke <strong className="text-slate-900">Google AI Studio (mode Build)</strong>.
                   </p>
                 </div>
