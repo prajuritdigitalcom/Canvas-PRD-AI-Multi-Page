@@ -1,5 +1,5 @@
-import { ProjectFormState } from '../types';
-import { DESIGN_THEMES } from '../data/designThemes';
+import { ProjectFormState } from '../types.js';
+import { DESIGN_THEMES } from '../data/designThemes.js';
 
 function formatThemeRules(themeId: string): string {
   const theme = DESIGN_THEMES.find((t) => t.id === themeId) || DESIGN_THEMES[0];
