@@ -20,14 +20,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ savedPRDs, onSelectPRD
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
             <FileCode2 className="w-4 h-4 text-[#fe4c6f]" />
             <span>RIWAYAT TERSIMPAN</span>
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900">Daftar PRD Multi-Halaman Tersimpan</h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900">
+            Daftar PRD Multi-Halaman Tersimpan
+          </h2>
+          <p className="text-sm text-slate-600 leading-relaxed max-w-2xl mt-1">
             Seluruh PRD yang pernah Anda generate tersimpan dengan aman di penyimpanan lokal browser.
           </p>
         </div>

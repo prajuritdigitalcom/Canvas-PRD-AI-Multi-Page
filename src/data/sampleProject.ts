@@ -20,6 +20,8 @@ export const SAMPLE_PROJECT: ProjectFormState = {
   goalWebsite:
     'Menghasilkan leads konsultasi gratis dari calon klien korporat & membangun kredibilitas sebagai firma pajak terpercaya',
   primaryCTA: 'Konsultasi Gratis via WhatsApp',
+  logoUrl: '',
+  faviconUrl: '',
 
   pages: SAMPLE_PAGES,
 
@@ -36,7 +38,7 @@ export const SAMPLE_PROJECT: ProjectFormState = {
   primaryColor: 'Corporate Blue (#1E3A8A) & Accent Gold (#D4AF37)',
   colorTone: 'Corporate Professional',
   typographyPairing: 'Plus Jakarta Sans (Body) + Playfair Display (Heading)',
-  visualStyle: 'Modern, Clean & Professional — kesan terpercaya untuk klien korporat',
+  designThemeId: 'modern-minimalist',
   contentLanguage: 'Indonesian',
   specialRequirements:
     'Integrasi tombol WhatsApp di setiap halaman, formulir konsultasi dengan validasi, desain sepenuhnya responsif mobile, waktu muat halaman cepat, dan skema warna yang konsisten dengan identitas korporat',

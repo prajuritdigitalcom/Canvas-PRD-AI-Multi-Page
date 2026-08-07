@@ -24,6 +24,8 @@ const DEFAULT_FORM_STATE: ProjectFormState = {
   rawBrief: '',
   goalWebsite: '',
   primaryCTA: 'Hubungi Kami via WhatsApp',
+  logoUrl: '',
+  faviconUrl: '',
   pages: DEFAULT_PAGES,
   sharedLayout: {
     navbarStyle: 'Sticky',
@@ -36,7 +38,7 @@ const DEFAULT_FORM_STATE: ProjectFormState = {
   primaryColor: 'Corporate Blue & Accent Gold',
   colorTone: 'Clean & Bright (Light theme)',
   typographyPairing: 'Plus Jakarta Sans (Body) + Playfair Display (Heading)',
-  visualStyle: 'Modern, Clean & Professional',
+  designThemeId: 'modern-minimalist',
   contentLanguage: 'Indonesian',
   specialRequirements: 'Responsif penuh, ramah mobile, dan cepat diakses',
   aiMode: 'auto',
@@ -170,6 +172,24 @@ export default function App() {
       }
 
       setPrdResult(data);
+
+      // Auto-save ke Riwayat begitu PRD berhasil digenerate
+      const newSaved: SavedPRD = {
+        id: 'prd-' + Date.now(),
+        title: formState.projectName || 'PRD Website Multi-Halaman',
+        createdAt: new Date().toISOString(),
+        readyScore: data.readyScore,
+        pageCount: formState.pages.length,
+        formState: { ...formState },
+        markdown: data.markdown,
+      };
+
+      setSavedPRDs((prev) => {
+        const updatedHistory = [newSaved, ...prev];
+        localStorage.setItem('ai_studio_prd_history', JSON.stringify(updatedHistory));
+        return updatedHistory;
+      });
+      setIsPRDSaved(true);
     } catch (err: any) {
       alert(err.message || 'Terjadi kesalahan saat memproses PRD.');
     } finally {
@@ -217,7 +237,12 @@ export default function App() {
   };
 
   const handleNewPRD = () => {
-    if (confirm('Buat formulir PRD baru? Draft sebelumnya dapat ditimpa.')) {
+    const warningText =
+      prdResult && !isPRDSaved
+        ? 'PRD saat ini belum tersimpan di Riwayat dan akan hilang jika dilanjutkan. Yakin ingin membuat PRD baru?'
+        : 'Buat formulir PRD baru? Draft sebelumnya dapat ditimpa.';
+
+    if (confirm(warningText)) {
       setFormState(DEFAULT_FORM_STATE);
       setPrdResult(null);
       setIsPRDSaved(false);
@@ -267,14 +292,11 @@ export default function App() {
               {/* Hero Banner when no PRD generated yet */}
               {!prdResult && (
                 <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 text-center max-w-5xl mx-auto space-y-4 shadow-xs">
-                  <span className="px-3.5 py-1 rounded-full bg-[#fe4c6f]/10 text-[#fe4c6f] border border-[#fe4c6f]/20 text-xs font-bold uppercase tracking-wider inline-block">
-                    PRODUK V2.0 — MULTI-PAGE GENERATOR
-                  </span>
                   <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-                    Ubah Brief Mentah Menjadi PRD Multi-Halaman untuk Google AI Studio
+                    Ubah Brief Mentah Menjadi PRD Multi-Halaman
                   </h2>
                   <p className="text-xs md:text-sm text-slate-600 leading-relaxed max-w-3xl mx-auto">
-                    Aplikasi ini membantu Anda merancang arsitektur website multi-halaman (Home, About, Services, Blog, Contact, dll.) dan menghasilkan PRD bertaraf profesional yang dapat dicopy-paste langsung ke <strong className="text-slate-900">Google AI Studio (mode Build)</strong>.
+                    Aplikasi ini membantu Anda membuat rancangan website multi-halaman, lengkap dengan PRD profesional yang siap digunakan untuk membangun website dengan lebih cepat dan terstruktur.
                   </p>
 
                   <div className="flex items-center justify-center pt-1">
@@ -287,9 +309,6 @@ export default function App() {
                       <span>Coba dengan Contoh Data (Isi Otomatis)</span>
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-400">
-                    Mengisi form dengan contoh brief bisnis nyata — cocok untuk mencoba alur aplikasi tanpa mengetik manual.
-                  </p>
                 </div>
               )}
 

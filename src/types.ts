@@ -23,6 +23,8 @@ export interface PageDefinition {
   keySections: string[];
   isInMainNav: boolean;
   order: number;
+  metaTitle?: string;        // Target Meta Title SEO (ideal ≤ 60 karakter)
+  metaDescription?: string;  // Target Meta Description SEO (ideal 120–160 karakter)
 }
 
 export interface SharedLayoutConfig {
@@ -41,6 +43,8 @@ export interface ProjectFormState {
   rawBrief: string;
   goalWebsite: string;
   primaryCTA: string;
+  logoUrl?: string;     // Link/URL logo website (bisa link gambar atau deskripsi teks logo)
+  faviconUrl?: string;  // Link/URL favicon website
   
   // Multi-Page Architecture
   pages: PageDefinition[];
@@ -53,7 +57,7 @@ export interface ProjectFormState {
   primaryColor: string;
   colorTone: string;
   typographyPairing: string;
-  visualStyle: string;
+  designThemeId: string;
   contentLanguage: 'Indonesian' | 'English' | 'Bilingual';
   specialRequirements: string;
   
@@ -82,7 +86,7 @@ export interface BriefAnalysisResponse {
   primaryColor?: string;
   colorTone?: string;
   typographyPairing?: string;
-  visualStyle?: string;
+  designThemeId?: string;
   contentLanguage?: ProjectFormState['contentLanguage'];
   specialRequirements?: string;
   suggestedPages?: PageDefinition[];

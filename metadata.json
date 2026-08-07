@@ -1,6 +1,6 @@
 {
-  "name": "Prajurit Digital - AI Studio Multi-Page PRD Generator",
-  "description": "Generator PRD terstruktur dan profesional untuk membangun website multi-halaman berbasis React + TypeScript dengan Google AI Studio Build. Didukung oleh Prajurit Digital.",
+  "name": "Canvas PRD AI Multi-Page",
+  "description": "PRD Website dalam Hitungan Menit. Generator PRD terstruktur dan profesional untuk membangun website multi-halaman berbasis React + TypeScript.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

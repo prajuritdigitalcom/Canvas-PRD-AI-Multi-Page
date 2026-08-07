@@ -13,7 +13,9 @@ export const PAGE_PRESETS: PagePreset[] = [
         pageType: 'Home',
         pagePurpose: 'Halaman utama penarik perhatian, ringkasan nilai tambah, layanan unggulan, dan bukti sosial.',
         keySections: ['Hero Banner with CTA', 'Ringkasan Nilai Tambah', 'Layanan Utama Grid', 'Mengapa Memilih Kami', 'Testimoni & Klien', 'CTA Banner Banner Kontak'],
-        isInMainNav: true
+        isInMainNav: true,
+        metaTitle: 'Profil Perusahaan Profesional & Layanan Terbaik',
+        metaDescription: 'Solusi terpercaya untuk kebutuhan bisnis Anda. Dapatkan layanan berkualitas tinggi dengan tim profesional berpengalaman.'
       },
       {
         pageName: 'Tentang Kami',
@@ -21,7 +23,9 @@ export const PAGE_PRESETS: PagePreset[] = [
         pageType: 'About',
         pagePurpose: 'Menjelaskan profil perusahaan, visi, misi, sejarah singkat, dan tim kepemimpinan.',
         keySections: ['Hero Header Sub-page', 'Cerita & Sejarah Perusahaan', 'Visi & Misi Card', 'Tim Kepemimpinan', 'Sertifikasi & Penghargaan'],
-        isInMainNav: true
+        isInMainNav: true,
+        metaTitle: 'Tentang Kami - Visi, Misi & Profil Perusahaan',
+        metaDescription: 'Mengenal lebih dekat profil perusahaan kami, perjalanan sejarah, visi misi, serta tim profesional di balik layanan terbaik.'
       },
       {
         pageName: 'Layanan & Solusi',
@@ -29,7 +33,9 @@ export const PAGE_PRESETS: PagePreset[] = [
         pageType: 'Services',
         pagePurpose: 'Menampilkan katalog lengkap layanan/produk dengan penjelasan komprehensif.',
         keySections: ['Hero Header Layanan', 'Daftar Layanan Detail Grid', 'Proses Kerja / Methodologi', 'FAQ Layanan', 'CTA Konsultasi Gratis'],
-        isInMainNav: true
+        isInMainNav: true,
+        metaTitle: 'Layanan & Solusi Terbaik untuk Bisnis Anda',
+        metaDescription: 'Jelajahi berbagai layanan dan solusi komprehensif yang dirancang untuk mempercepat pertumbuhan dan efisiensi bisnis Anda.'
       },
       {
         pageName: 'Portofolio & Proyek',
@@ -37,7 +43,9 @@ export const PAGE_PRESETS: PagePreset[] = [
         pageType: 'Portfolio',
         pagePurpose: 'Showcase hasil kerja nyata, studi kasus, dan galeri proyek yang pernah ditangani.',
         keySections: ['Filter Kategori Proyek', 'Grid Card Proyek dengan Modal/Hover', 'Highlight Studi Kasus Utama', 'Statistik Hasil'],
-        isInMainNav: true
+        isInMainNav: true,
+        metaTitle: 'Portofolio Proyek & Studi Kasus Hasil Kerja',
+        metaDescription: 'Lihat koleksi portofolio proyek dan studi kasus sukses yang telah kami selesaikan untuk berbagai klien terkemuka.'
       },
       {
         pageName: 'Blog & Berita',
@@ -45,7 +53,9 @@ export const PAGE_PRESETS: PagePreset[] = [
         pageType: 'Blog List',
         pagePurpose: 'Pusat artikel edukatif, kabar perusahaan, dan wawasan industri untuk SEO.',
         keySections: ['Featured Article Hero', 'Grid Artikel Terbaru dengan Pagination', 'Widget Kategori & Pencarian', 'Newsletter Signup Box'],
-        isInMainNav: true
+        isInMainNav: true,
+        metaTitle: 'Blog & Wawasan Industri Terbaru',
+        metaDescription: 'Temukan artikel menarik, panduan praktis, serta wawasan industri terbaru dari tim ahli kami.'
       },
       {
         pageName: 'Hubungi Kami',
@@ -53,7 +63,9 @@ export const PAGE_PRESETS: PagePreset[] = [
         pageType: 'Contact',
         pagePurpose: 'Halaman kontak lengkap dengan formulir, peta lokasi, alamat kantor, dan saluran komunikasi.',
         keySections: ['Formulir Pesan Interaktif', 'Info Kontak (Telp, WA, Email)', 'Embedded Google Maps / Lokasi', 'Jam Operasional Kantor'],
-        isInMainNav: true
+        isInMainNav: true,
+        metaTitle: 'Hubungi Kami - Konsultasi & Lokasi Kantor',
+        metaDescription: 'Hubungi tim kami untuk konsultasi gratis atau kunjungi lokasi kantor kami. Kami siap membantu kebutuhan bisnis Anda.'
       }
     ]
   },

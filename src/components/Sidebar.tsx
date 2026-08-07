@@ -112,19 +112,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-slate-600 font-medium text-[11px]">Backup</span>
-            {backupKeyCount > 0 ? (
-              <span className="inline-flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Aktif ({backupKeyCount})
-              </span>
-            ) : (
-              <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
-                Kosong
-              </span>
-            )}
-          </div>
-          <div className="flex items-center justify-between">
             <span className="text-slate-600 font-medium text-[11px]">Pribadi (Anda)</span>
             {visitorKeyCount > 0 ? (
               <span className="inline-flex items-center gap-1.5 text-sky-800 font-bold text-[11px] bg-sky-50 px-2.5 py-0.5 rounded-md border border-sky-200">

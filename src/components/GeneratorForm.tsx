@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ProjectFormState } from '../types';
 import { PageBuilder } from './PageBuilder';
 import { SharedLayoutForm } from './SharedLayoutForm';
+import { ThemeFoundationSelector } from './ThemeFoundationSelector';
 import {
   Sparkles,
   Building2,
@@ -84,7 +85,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         primaryColor: data.primaryColor || formState.primaryColor,
         colorTone: data.colorTone || formState.colorTone,
         typographyPairing: data.typographyPairing || formState.typographyPairing,
-        visualStyle: data.visualStyle || formState.visualStyle,
+        designThemeId: data.designThemeId || formState.designThemeId,
         contentLanguage: data.contentLanguage || formState.contentLanguage,
         specialRequirements: data.specialRequirements || formState.specialRequirements,
         pages: nextPages,
@@ -116,6 +117,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       }}
       className="space-y-8 max-w-5xl mx-auto"
     >
+      {/* SECTION 0: Fondasi Tema Desain — WAJIB dipilih paling awal sebelum section lain */}
+      <ThemeFoundationSelector
+        selectedThemeId={formState.designThemeId}
+        onSelectTheme={(id) => updateForm({ designThemeId: id })}
+      />
+
       {/* SECTION 1: Brief & Informasi Proyek */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
         <div className="border-b border-slate-100 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -126,7 +133,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </div>
             <h2 className="text-xl font-extrabold text-slate-900">Profil Bisnis & Deskripsi Brief Mentah</h2>
             <p className="text-sm text-slate-500 mt-1">
-              Tuliskan ide bisnis atau salin brief dari klien. Mode Auto AI dapat membantu mengekstrak informasi dan mengusulkan halaman secara otomatis.
+              Masukkan ide bisnis atau brief. AI akan menyusun halaman website secara otomatis.
             </p>
           </div>
           {onFillSample && (
@@ -260,6 +267,28 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>
+
+          <div>
+            <label className="block text-slate-700 font-semibold mb-1.5">Link Logo Website</label>
+            <input
+              type="text"
+              value={formState.logoUrl || ''}
+              onChange={(e) => updateForm({ logoUrl: e.target.value })}
+              placeholder="Contoh: https://cdn.contoh.com/logo.png (opsional)"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-700 font-semibold mb-1.5">Link Favicon Website</label>
+            <input
+              type="text"
+              value={formState.faviconUrl || ''}
+              onChange={(e) => updateForm({ faviconUrl: e.target.value })}
+              placeholder="Contoh: https://cdn.contoh.com/favicon.ico (opsional)"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
+            />
+          </div>
         </div>
       </div>
 
@@ -285,7 +314,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
           <h3 className="text-xl font-extrabold text-slate-900">Gaya Desain, Warna & Tipografi</h3>
           <p className="text-sm text-slate-500 mt-1">
-            Menentukan aturan visual agar konsisten di seluruh halaman website multi-page.
+            Menentukan detail warna & tipografi sebagai penyesuaian dari Tema Desain yang sudah Anda pilih di atas.
           </p>
         </div>
 

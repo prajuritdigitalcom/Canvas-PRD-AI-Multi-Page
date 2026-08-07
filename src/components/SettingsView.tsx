@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Settings, Shield, CheckCircle2, Code2, Cpu, KeyRound, Sparkles, Info, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { Settings, CheckCircle2, KeyRound, Sparkles, Info, Trash2, Loader2 } from 'lucide-react';
 
 interface SettingsViewProps {
   visitorApiKeys: string[];
   onSaveVisitorApiKeys: (keys: string[]) => void;
   onClearVisitorApiKeys: () => void;
   onRemoveVisitorApiKey: (key: string) => void;
-  hasSystemApiKey: boolean;
+  hasSystemApiKey?: boolean;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -14,7 +14,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onSaveVisitorApiKeys,
   onClearVisitorApiKeys,
   onRemoveVisitorApiKey,
-  hasSystemApiKey,
 }) => {
   const [rawInput, setRawInput] = useState('');
   const [checking, setChecking] = useState(false);
@@ -88,79 +87,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           Pengaturan Gemini AI & Server Environment
         </h2>
         <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
-          Kelola kunci API Gemini, pantau status server backend Express, dan atur preferensi platform target pembuatan PRD website multi-halaman.
+          Kelola API Gemini pribadi sebagai kuota utama atau cadangan.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Status AI Model & Server */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <Cpu className="w-4.5 h-4.5 text-[#fe4c6f]" />
-              <span>Status AI Engine & Backend</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Informasi runtime server Express & SDK Gemini
-            </p>
-          </div>
-
-          <div className="space-y-4 text-xs">
-            {/* AI Model Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-3">
-              <div>
-                <div className="font-bold text-slate-900 flex items-center gap-2 text-sm">
-                  <span>Gemini 3.6 Flash</span>
-                </div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
-                  SDK Resmi <code className="text-[#fe4c6f] bg-pink-50 px-1 py-0.5 rounded font-mono">@google/genai</code>
-                </div>
-              </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shrink-0">
-                Aktif
-              </span>
-            </div>
-
-            {/* Server Key Status Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-emerald-600" />
-                  <span>API Key Server (Cloud Run Secrets)</span>
-                </span>
-                {hasSystemApiKey ? (
-                  <span className="flex items-center gap-1 text-emerald-700 font-bold text-[11px]">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Terkoneksi
-                  </span>
-                ) : (
-                  <span className="text-amber-600 font-bold text-[11px]">Belum Ada</span>
-                )}
-              </div>
-              <p className="text-slate-600 leading-relaxed text-[11px]">
-                API key server dikelola secara aman via environment variables tanpa pernah terekspos ke browser pengguna.
-              </p>
-            </div>
-
-            {/* Target Platform Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 flex items-center gap-2">
-                  <Code2 className="w-4 h-4 text-[#fe4c6f]" />
-                  <span>Target Build Platform</span>
-                </span>
-                <span className="text-slate-900 font-bold text-[11px] px-2.5 py-0.5 rounded-md bg-pink-50 border border-pink-200">
-                  Google AI Studio (Build mode)
-                </span>
-              </div>
-              <p className="text-slate-600 leading-relaxed text-[11px]">
-                Mengoptimalkan struktur PRD untuk kompatibilitas penuh dengan bundler Vite, React 18/19, TypeScript, dan <code className="text-[#fe4c6f] font-mono">react-router-dom</code>.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Visitor Custom API Key */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5 flex flex-col justify-between">
+      {/* Visitor Custom API Key */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
           <div className="space-y-4">
             <div className="border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -259,25 +191,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-100 text-xs space-y-2">
-            <a
-              href="https://aistudio.google.com/apikey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#fe4c6f] hover:underline font-bold text-xs flex items-center gap-1"
-            >
-              <span>Dapatkan API Key Gemini Gratis di Google AI Studio</span>
-              <span>→</span>
-            </a>
+          <div className="pt-4 border-t border-slate-100 text-xs">
             <div className="flex items-start gap-2 text-slate-500 text-[11px] leading-relaxed">
               <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
               <span>
-                Keamanan Terjamin: API Key pengunjung disimpan secara lokal di browser Anda (<code className="font-mono">sessionStorage</code>) dan hanya dikirim secara langsung via header terenkripsi saat merequest PRD.
+                API Key hanya disimpan di browser Anda dan digunakan saat diperlukan.
               </span>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
 };

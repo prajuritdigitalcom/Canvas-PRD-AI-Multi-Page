@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Plus, Clock, Code2 } from 'lucide-react';
+import { Sparkles, Plus, Clock } from 'lucide-react';
 
 interface HeaderProps {
   onNewPRD: () => void;
@@ -21,23 +21,15 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3">
           <img
             src="https://i.ibb.co.com/wr0x733r/prajurit-digital.jpg"
-            alt="Prajurit Digital Logo"
+            alt="Canvas PRD AI Logo"
             className="w-10 h-10 rounded-xl object-cover border border-pink-200 shadow-xs shrink-0"
           />
           <div className="flex flex-col justify-center">
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-extrabold text-slate-900 tracking-tight leading-none">
-                Prajurit Digital
-              </h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fe4c6f]/10 text-[#fe4c6f] border border-[#fe4c6f]/20 leading-none">
-                AI Studio PRD Generator
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-1 leading-none">
-              <span>Optimized for</span>
-              <span className="text-slate-800 font-semibold flex items-center gap-1">
-                <Code2 className="w-3.5 h-3.5 text-[#fe4c6f] inline" /> Google AI Studio Build
-              </span>
+            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight leading-none">
+              Canvas PRD AI Multi-Page
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 leading-none">
+              PRD Website dalam Hitungan Menit
             </p>
           </div>
         </div>

@@ -205,7 +205,7 @@ app.post('/api/analyze-brief', async (req, res) => {
                 primaryColor: { type: Type.STRING, description: 'Rekomendasi warna utama' },
                 colorTone: { type: Type.STRING, description: 'Tone warna canvas' },
                 typographyPairing: { type: Type.STRING, description: 'Pasangan font' },
-                visualStyle: { type: Type.STRING, description: 'Gaya visual' },
+                designThemeId: { type: Type.STRING, description: 'ID Tema Desain terpilih (modern-minimalist, neo-brutalism, bento-grid, editorial-elegant, playful-organic, dark-luxury)' },
                 contentLanguage: { type: Type.STRING, description: 'Indonesian, English, atau Bilingual' },
                 specialRequirements: { type: Type.STRING, description: 'Kebutuhan khusus' },
                 suggestedPages: {
@@ -222,6 +222,8 @@ app.post('/api/analyze-brief', async (req, res) => {
                         items: { type: Type.STRING },
                       },
                       isInMainNav: { type: Type.BOOLEAN },
+                      metaTitle: { type: Type.STRING, description: 'Rekomendasi Meta Title SEO (≤60 karakter)' },
+                      metaDescription: { type: Type.STRING, description: 'Rekomendasi Meta Description SEO (120–160 karakter)' },
                     },
                     required: ['pageName', 'pageSlug', 'pageType', 'pagePurpose', 'isInMainNav'],
                   },
@@ -341,6 +343,19 @@ app.post('/api/generate-prd', async (req, res) => {
 
     if (formState.primaryColor && formState.typographyPairing) {
       passed.push('Identitas visual (warna utama & tipografi) sudah ditentukan.');
+    }
+
+    if (formState.designThemeId) {
+      passed.push(`Fondasi Tema Desain terpilih: "${formState.designThemeId}" — akan diikuti konsisten di seluruh PRD.`);
+    }
+
+    const pagesWithMeta = formState.pages?.filter((p) => p.metaTitle && p.metaDescription).length || 0;
+    if (pagesWithMeta === pageCount && pageCount > 0) {
+      passed.push('Seluruh halaman memiliki target Meta Title & Meta Description SEO.');
+    } else if (pagesWithMeta > 0) {
+      passed.push(`${pagesWithMeta} dari ${pageCount} halaman sudah memiliki Meta Title/Description SEO.`);
+    } else {
+      warnings.push('Belum ada halaman yang diisi Meta Title/Meta Description SEO secara manual (AI akan membuat rekomendasi otomatis).');
     }
 
     let readyScore = 70 + (pageCount >= 3 ? 15 : 10) + (formState.projectName ? 5 : 0) + (formState.targetAudience ? 5 : 0) + (warnings.length === 0 ? 5 : 0);

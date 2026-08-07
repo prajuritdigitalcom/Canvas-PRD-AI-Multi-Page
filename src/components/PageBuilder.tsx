@@ -121,7 +121,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
             </span>
           </h3>
           <p className="text-sm text-slate-500 mt-1">
-            Susun daftar halaman yang akan dibangun secara fisik (\`src/pages/*.tsx\`) dalam proyek React + Vite Anda.
+            Susun daftar halaman yang akan dibuat dalam website Anda.
           </p>
         </div>
 
@@ -297,6 +297,45 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                   placeholder="Jelaskan peran halaman ini untuk pengunjung (cth: Menampilkan seluruh katalog produk lengkap dengan filter)..."
                   className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:border-[#fe4c6f] resize-none"
                 />
+              </div>
+
+              {/* Meta Title SEO & Meta Description SEO */}
+              <div className="sm:col-span-2 md:col-span-3 pt-2 border-t border-slate-200/80 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-600 font-semibold">Meta Title SEO</label>
+                    <span className={`text-[10px] font-mono ${ (page.metaTitle?.length || 0) > 60 ? 'text-red-500 font-bold' : 'text-slate-400' }`}>
+                      {page.metaTitle?.length || 0}/60
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={page.metaTitle || ''}
+                    onChange={(e) => updatePage(page.id, { metaTitle: e.target.value })}
+                    placeholder="Nama Bisnis - Layanan Utama | Kota"
+                    className={`w-full bg-white border rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:border-[#fe4c6f] ${
+                      (page.metaTitle?.length || 0) > 60 ? 'border-red-400 focus:border-red-500' : 'border-slate-200'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-600 font-semibold">Meta Description SEO</label>
+                    <span className={`text-[10px] font-mono ${ (page.metaDescription?.length || 0) > 160 ? 'text-red-500 font-bold' : 'text-slate-400' }`}>
+                      {page.metaDescription?.length || 0}/160
+                    </span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={page.metaDescription || ''}
+                    onChange={(e) => updatePage(page.id, { metaDescription: e.target.value })}
+                    placeholder="Deskripsi singkat yang menarik, mengandung keyword utama & CTA, maksimal 160 karakter."
+                    className={`w-full bg-white border rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none focus:border-[#fe4c6f] resize-none ${
+                      (page.metaDescription?.length || 0) > 160 ? 'border-red-400 focus:border-red-500' : 'border-slate-200'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
           </div>
