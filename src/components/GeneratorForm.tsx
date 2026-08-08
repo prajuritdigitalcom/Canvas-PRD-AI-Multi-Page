@@ -12,6 +12,7 @@ import {
   Wand2,
   ArrowRight,
 } from 'lucide-react';
+import { ToastType } from './Toast';
 
 interface GeneratorFormProps {
   formState: ProjectFormState;
@@ -20,6 +21,7 @@ interface GeneratorFormProps {
   isGenerating: boolean;
   visitorApiKeys: string[];
   onFillSample?: () => void;
+  onShowToast?: (message: string, type: ToastType, onRetry?: () => void) => void;
 }
 
 export const GeneratorForm: React.FC<GeneratorFormProps> = ({
@@ -29,6 +31,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   isGenerating,
   visitorApiKeys,
   onFillSample,
+  onShowToast,
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeSuccess, setAnalyzeSuccess] = useState(false);
@@ -39,7 +42,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
   const handleAnalyzeBrief = async () => {
     if (!formState.rawBrief || formState.rawBrief.trim().length < 10) {
-      alert('Tolong masukkan deskripsi brief mentah bisnis Anda terlebih dahulu (minimal 10 karakter).');
+      onShowToast?.('Tolong masukkan deskripsi brief mentah bisnis Anda terlebih dahulu (minimal 10 karakter).', 'warning');
+      return;
+    }
+
+    if (formState.rawBrief.length > 5000) {
+      onShowToast?.('Brief mentah terlalu panjang (maksimal 5000 karakter). Mohon persingkat brief Anda.', 'warning');
       return;
     }
 
@@ -92,9 +100,14 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       });
 
       setAnalyzeSuccess(true);
+      onShowToast?.('Berhasil menganalisis brief! Profil bisnis & halaman telah diperbarui.', 'success');
       setTimeout(() => setAnalyzeSuccess(false), 4000);
     } catch (err: any) {
-      alert(err.message || 'Terjadi kesalahan saat menganalisis brief.');
+      onShowToast?.(
+        err.message || 'Terjadi kesalahan saat menganalisis brief.',
+        'error',
+        handleAnalyzeBrief
+      );
     } finally {
       setIsAnalyzing(false);
     }
@@ -161,7 +174,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 type="button"
                 onClick={handleAnalyzeBrief}
                 disabled={isAnalyzing}
-                className="px-3.5 py-1.5 rounded-xl bg-[#fe4c6f] hover:bg-[#e03b5b] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+                className="px-3.5 py-1.5 rounded-xl bg-[#fe4c6f] hover:bg-[#e03b5b] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isAnalyzing ? (
                   <>
@@ -391,7 +404,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         <button
           type="submit"
           disabled={isGenerating}
-          className="w-full py-4 px-6 rounded-2xl bg-[#fe4c6f] hover:bg-[#e03b5b] text-white font-black text-base shadow-xl shadow-[#fe4c6f]/20 flex items-center justify-center gap-3 transition-all transform active:scale-[0.99] disabled:opacity-50"
+          className="w-full py-4 px-6 rounded-2xl bg-[#fe4c6f] hover:bg-[#e03b5b] text-white font-black text-base shadow-xl shadow-[#fe4c6f]/20 flex items-center justify-center gap-3 transition-all transform active:scale-[0.99] disabled:opacity-50 cursor-pointer"
         >
           {isGenerating ? (
             <>
@@ -410,4 +423,3 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     </form>
   );
 };
-

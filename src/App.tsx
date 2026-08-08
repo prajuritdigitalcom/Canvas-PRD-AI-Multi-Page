@@ -8,6 +8,8 @@ import { GeneratorForm } from './components/GeneratorForm';
 import { OutputView } from './components/OutputView';
 import { HistoryView } from './components/HistoryView';
 import { SettingsView } from './components/SettingsView';
+import { Toast, ToastType } from './components/Toast';
+import { ConfirmModal } from './components/ConfirmModal';
 import { Wand2 } from 'lucide-react';
 
 const DEFAULT_PAGES: PageDefinition[] = PAGE_PRESETS[0].pages.map((p, idx) => ({
@@ -53,28 +55,51 @@ export default function App() {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [isPRDSaved, setIsPRDSaved] = useState(false);
 
+  // Toast & Modal State
+  const [toast, setToast] = useState<{ message: string; type: ToastType; onRetry?: () => void } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    variant?: 'danger' | 'primary' | 'warning';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showToast = (message: string, type: ToastType = 'info', onRetry?: () => void) => {
+    setToast({ message, type, onRetry });
+  };
+
   const [visitorApiKeys, setVisitorApiKeys] = useState<string[]>(() => {
-    const storedArray = sessionStorage.getItem('canvas_prd_visitor_api_keys');
-    if (storedArray) {
-      try {
+    try {
+      const storedArray = sessionStorage.getItem('canvas_prd_visitor_api_keys');
+      if (storedArray) {
         const parsed = JSON.parse(storedArray);
         if (Array.isArray(parsed)) return parsed.filter(Boolean);
-      } catch (e) {
-        console.error('Failed to parse visitor keys array', e);
       }
+      const legacySingle = sessionStorage.getItem('canvas_prd_visitor_api_key');
+      return legacySingle ? [legacySingle.trim()] : [];
+    } catch {
+      return [];
     }
-    // Migration fallback from single string key
-    const legacySingle = sessionStorage.getItem('canvas_prd_visitor_api_key');
-    return legacySingle ? [legacySingle.trim()] : [];
   });
   const [hasSystemApiKey, setHasSystemApiKey] = useState(true);
   const [serverKeyCount, setServerKeyCount] = useState<number>(0);
   const [backupKeyCount, setBackupKeyCount] = useState<number>(0);
+  const [apiStatusError, setApiStatusError] = useState<string | null>(null);
 
   // Check server API key status on mount
   useEffect(() => {
     fetch('/api/status')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Status endpoint returned non-200');
+        return res.json();
+      })
       .then((data) => {
         if (typeof data.hasSystemApiKey === 'boolean') {
           setHasSystemApiKey(data.hasSystemApiKey);
@@ -85,41 +110,60 @@ export default function App() {
         if (typeof data.backupKeyCount === 'number') {
           setBackupKeyCount(data.backupKeyCount);
         }
+        setApiStatusError(null);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('Gagal terhubung ke endpoint status server:', err);
+        setApiStatusError('Gagal memeriksa status koneksi server');
+      });
   }, []);
 
   const handleSaveVisitorApiKeys = (keys: string[]) => {
-    sessionStorage.setItem('canvas_prd_visitor_api_keys', JSON.stringify(keys));
-    setVisitorApiKeys(keys);
+    try {
+      sessionStorage.setItem('canvas_prd_visitor_api_keys', JSON.stringify(keys));
+      setVisitorApiKeys(keys);
+      showToast('API Key pribadi berhasil disimpan untuk sesi ini.', 'success');
+    } catch (e) {
+      showToast('Gagal menyimpan API key ke browser storage.', 'error');
+    }
   };
 
   const handleClearVisitorApiKeys = () => {
-    sessionStorage.removeItem('canvas_prd_visitor_api_keys');
-    sessionStorage.removeItem('canvas_prd_visitor_api_key');
-    setVisitorApiKeys([]);
+    try {
+      sessionStorage.removeItem('canvas_prd_visitor_api_keys');
+      sessionStorage.removeItem('canvas_prd_visitor_api_key');
+      setVisitorApiKeys([]);
+      showToast('API Key pribadi berhasil dihapus.', 'info');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleRemoveVisitorApiKey = (keyToRemove: string) => {
-    const updated = visitorApiKeys.filter((k) => k !== keyToRemove);
-    sessionStorage.setItem('canvas_prd_visitor_api_keys', JSON.stringify(updated));
-    setVisitorApiKeys(updated);
+    try {
+      const updated = visitorApiKeys.filter((k) => k !== keyToRemove);
+      sessionStorage.setItem('canvas_prd_visitor_api_keys', JSON.stringify(updated));
+      setVisitorApiKeys(updated);
+      showToast('API Key berhasil dihapus.', 'info');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Load saved PRDs and Draft on initial mount
   useEffect(() => {
-    const storedHistory = localStorage.getItem('ai_studio_prd_history');
-    if (storedHistory) {
-      try {
+    try {
+      const storedHistory = localStorage.getItem('ai_studio_prd_history');
+      if (storedHistory) {
         setSavedPRDs(JSON.parse(storedHistory));
-      } catch (e) {
-        console.error('Failed to parse PRD history', e);
       }
+    } catch (e) {
+      console.error('Failed to parse PRD history', e);
     }
 
-    const savedForm = localStorage.getItem('canvas_prd_form_draft');
-    if (savedForm) {
-      try {
+    try {
+      const savedForm = localStorage.getItem('canvas_prd_form_draft');
+      if (savedForm) {
         const parsed = JSON.parse(savedForm);
         const mergedPages =
           parsed.pages && Array.isArray(parsed.pages) && parsed.pages.length > 0
@@ -134,18 +178,22 @@ export default function App() {
           sharedLayout: mergedShared,
           targetPlatform: 'Google AI Studio',
         });
-      } catch (e) {
-        console.error('Failed to parse draft', e);
       }
+    } catch (e) {
+      console.error('Failed to parse draft', e);
     }
   }, []);
 
-  // Auto-save form draft on change
+  // Auto-save form draft on change safely
   useEffect(() => {
     const timer = setTimeout(() => {
-      localStorage.setItem('canvas_prd_form_draft', JSON.stringify(formState));
-      const now = new Date();
-      setLastSavedAt(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+      try {
+        localStorage.setItem('canvas_prd_form_draft', JSON.stringify(formState));
+        const now = new Date();
+        setLastSavedAt(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+      } catch (e) {
+        console.warn('Quota exceeded or error saving draft to localStorage:', e);
+      }
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -186,12 +234,21 @@ export default function App() {
 
       setSavedPRDs((prev) => {
         const updatedHistory = [newSaved, ...prev];
-        localStorage.setItem('ai_studio_prd_history', JSON.stringify(updatedHistory));
+        try {
+          localStorage.setItem('ai_studio_prd_history', JSON.stringify(updatedHistory));
+        } catch (e) {
+          showToast('Riwayat PRD tidak dapat disimpan — penyimpanan browser penuh.', 'warning');
+        }
         return updatedHistory;
       });
       setIsPRDSaved(true);
+      showToast('PRD Multi-Halaman berhasil disusun!', 'success');
     } catch (err: any) {
-      alert(err.message || 'Terjadi kesalahan saat memproses PRD.');
+      showToast(
+        err.message || 'Terjadi kesalahan saat memproses PRD.',
+        'error',
+        handleGeneratePRD
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -212,14 +269,24 @@ export default function App() {
 
     const updated = [newSaved, ...savedPRDs];
     setSavedPRDs(updated);
-    localStorage.setItem('ai_studio_prd_history', JSON.stringify(updated));
-    setIsPRDSaved(true);
+    try {
+      localStorage.setItem('ai_studio_prd_history', JSON.stringify(updated));
+      setIsPRDSaved(true);
+      showToast('PRD berhasil disimpan ke Riwayat.', 'success');
+    } catch (e) {
+      showToast('Gagal menyimpan ke Riwayat — penyimpanan browser penuh.', 'error');
+    }
   };
 
   const handleDeleteSavedPRD = (id: string) => {
     const updated = savedPRDs.filter((item) => item.id !== id);
     setSavedPRDs(updated);
-    localStorage.setItem('ai_studio_prd_history', JSON.stringify(updated));
+    try {
+      localStorage.setItem('ai_studio_prd_history', JSON.stringify(updated));
+      showToast('PRD dihapus dari Riwayat.', 'info');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleSelectPRD = (saved: SavedPRD) => {
@@ -234,37 +301,80 @@ export default function App() {
     });
     setIsPRDSaved(true);
     setActiveTab('generator');
+    showToast(`Memuat PRD: "${saved.title}"`, 'info');
   };
 
   const handleNewPRD = () => {
-    const warningText =
-      prdResult && !isPRDSaved
-        ? 'PRD saat ini belum tersimpan di Riwayat dan akan hilang jika dilanjutkan. Yakin ingin membuat PRD baru?'
-        : 'Buat formulir PRD baru? Draft sebelumnya dapat ditimpa.';
-
-    if (confirm(warningText)) {
-      setFormState(DEFAULT_FORM_STATE);
-      setPrdResult(null);
-      setIsPRDSaved(false);
-      setActiveTab('generator');
-    }
+    const isUnsaved = prdResult && !isPRDSaved;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Buat PRD Baru?',
+      message: isUnsaved
+        ? 'PRD saat ini belum tersimpan di Riwayat dan akan hilang jika Anda melanjutkan. Yakin ingin membuat PRD baru?'
+        : 'Formulir akan dikosongkan untuk membuat PRD baru. Lanjutkan?',
+      confirmText: 'Buat Baru',
+      variant: isUnsaved ? 'warning' : 'primary',
+      onConfirm: () => {
+        setFormState(DEFAULT_FORM_STATE);
+        setPrdResult(null);
+        setIsPRDSaved(false);
+        setActiveTab('generator');
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        showToast('Form PRD baru telah disiapkan.', 'info');
+      },
+    });
   };
 
   const handleFillSampleData = () => {
     if (formState.projectName || formState.rawBrief) {
-      const confirmFill = confirm(
-        'Form akan diisi dengan data contoh dan menimpa isian yang sudah ada. Lanjutkan?'
-      );
-      if (!confirmFill) return;
+      setConfirmModal({
+        isOpen: true,
+        title: 'Isi Contoh Data Otomatis?',
+        message: 'Form akan diisi dengan data contoh bisnis "KonsultanPajakKu" dan menimpa isian yang sudah Anda tulis. Lanjutkan?',
+        confirmText: 'Isi Contoh Data',
+        variant: 'primary',
+        onConfirm: () => {
+          setFormState({
+            ...SAMPLE_PROJECT,
+            pages: SAMPLE_PROJECT.pages.map((p) => ({ ...p })),
+          });
+          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+          showToast('Contoh data berhasil diisikan ke form!', 'success');
+        },
+      });
+      return;
     }
+
     setFormState({
       ...SAMPLE_PROJECT,
       pages: SAMPLE_PROJECT.pages.map((p) => ({ ...p })),
     });
+    showToast('Contoh data berhasil diisikan ke form!', 'success');
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#fe4c6f] selection:text-white">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onRetry={toast.onRetry}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
+
       {/* Top Header */}
       <Header
         onNewPRD={handleNewPRD}
@@ -287,6 +397,12 @@ export default function App() {
 
         {/* Content View Area */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
+          {apiStatusError && (
+            <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center justify-between">
+              <span>⚠️ Status koneksi server: {apiStatusError}</span>
+            </div>
+          )}
+
           {activeTab === 'generator' && (
             <div className="space-y-8">
               {/* Hero Banner when no PRD generated yet */}
@@ -329,6 +445,7 @@ export default function App() {
                   isGenerating={isGenerating}
                   visitorApiKeys={visitorApiKeys}
                   onFillSample={handleFillSampleData}
+                  onShowToast={showToast}
                 />
               )}
             </div>

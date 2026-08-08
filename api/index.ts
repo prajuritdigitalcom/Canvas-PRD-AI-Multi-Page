@@ -3,6 +3,7 @@ import path from 'path';
 import { GoogleGenAI, Type } from '@google/genai';
 import { buildSystemPrompt, buildUserPrompt, buildAnalysisPrompt } from '../src/prompts/promptTemplates.js';
 import { ProjectFormState, PRDGenerateResponse, BriefAnalysisResponse } from '../src/types.js';
+import { GEMINI_MODEL, getModelFallbackChain } from '../src/config/aiModel.js';
 
 // Vercel serverless function timeout
 export const maxDuration = 60;
@@ -126,26 +127,31 @@ app.post('/api/validate-keys', async (req, res) => {
       .map((k) => (typeof k === 'string' ? k.trim() : ''))
       .filter(Boolean);
 
+    const candidateModels = getModelFallbackChain();
+
     const results = await Promise.all(
       candidates.map(async (key) => {
-        try {
-          const ai = new GoogleGenAI({
-            apiKey: key,
-            httpOptions: {
-              headers: {
-                'User-Agent': 'aistudio-build',
+        for (const modelCandidate of candidateModels) {
+          try {
+            const ai = new GoogleGenAI({
+              apiKey: key,
+              httpOptions: {
+                headers: {
+                  'User-Agent': 'aistudio-build',
+                },
               },
-            },
-          });
-          await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: 'ping',
-            config: { maxOutputTokens: 1 },
-          });
-          return { key, valid: true };
-        } catch {
-          return { key, valid: false, reason: 'Key ditolak Google' };
+            });
+            await ai.models.generateContent({
+              model: modelCandidate,
+              contents: 'ping',
+              config: { maxOutputTokens: 1 },
+            });
+            return { key, valid: true, modelUsed: modelCandidate };
+          } catch {
+            // Try next model candidate if primary fails
+          }
         }
+        return { key, valid: false, reason: 'Key ditolak Google' };
       })
     );
 
@@ -163,6 +169,10 @@ app.post('/api/analyze-brief', async (req, res) => {
       return res.status(400).json({ error: 'Brief mentah wajib diisi.' });
     }
 
+    if (rawBrief.length > 5000) {
+      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 5000 karakter). Mohon persingkat brief Anda.' });
+    }
+
     const candidateKeys = getAllCandidateKeys(req);
     if (candidateKeys.length === 0) {
       return res.status(400).json({
@@ -170,75 +180,80 @@ app.post('/api/analyze-brief', async (req, res) => {
       });
     }
 
+    const candidateModels = getModelFallbackChain();
     const prompt = buildAnalysisPrompt(rawBrief);
     let jsonText = '';
+    let modelUsed = GEMINI_MODEL;
     let lastError: any = null;
 
-    for (const apiKey of candidateKeys) {
-      try {
-        const ai = new GoogleGenAI({
-          apiKey,
-          httpOptions: {
-            headers: {
-              'User-Agent': 'aistudio-build',
+    keyLoop: for (const apiKey of candidateKeys) {
+      for (const modelCandidate of candidateModels) {
+        try {
+          const ai = new GoogleGenAI({
+            apiKey,
+            httpOptions: {
+              headers: {
+                'User-Agent': 'aistudio-build',
+              },
             },
-          },
-        });
+          });
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.6-flash',
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                projectName: { type: Type.STRING, description: 'Nama proyek atau bisnis' },
-                businessType: { type: Type.STRING, description: 'Bidang usaha atau industri' },
-                websiteType: {
-                  type: Type.STRING,
-                  description: 'Kategori website (Company Profile, E-Commerce / Catalog, SaaS / Service App, Agency / Portfolio, Educational / Community)',
-                },
-                targetAudience: { type: Type.STRING, description: 'Target pengguna / calon klien' },
-                goalWebsite: { type: Type.STRING, description: 'Tujuan utama website' },
-                primaryCTA: { type: Type.STRING, description: 'Call to Action utama (misal: WhatsApp)' },
-                primaryColor: { type: Type.STRING, description: 'Rekomendasi warna utama' },
-                colorTone: { type: Type.STRING, description: 'Tone warna canvas' },
-                typographyPairing: { type: Type.STRING, description: 'Pasangan font' },
-                designThemeId: { type: Type.STRING, description: 'ID Tema Desain terpilih (modern-minimalist, neo-brutalism, bento-grid, editorial-elegant, playful-organic, dark-luxury)' },
-                contentLanguage: { type: Type.STRING, description: 'Indonesian, English, atau Bilingual' },
-                specialRequirements: { type: Type.STRING, description: 'Kebutuhan khusus' },
-                suggestedPages: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      pageName: { type: Type.STRING },
-                      pageSlug: { type: Type.STRING },
-                      pageType: { type: Type.STRING },
-                      pagePurpose: { type: Type.STRING },
-                      keySections: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING },
+          const response = await ai.models.generateContent({
+            model: modelCandidate,
+            contents: prompt,
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  projectName: { type: Type.STRING, description: 'Nama proyek atau bisnis' },
+                  businessType: { type: Type.STRING, description: 'Bidang usaha atau industri' },
+                  websiteType: {
+                    type: Type.STRING,
+                    description: 'Kategori website (Company Profile, E-Commerce / Catalog, SaaS / Service App, Agency / Portfolio, Educational / Community)',
+                  },
+                  targetAudience: { type: Type.STRING, description: 'Target pengguna / calon klien' },
+                  goalWebsite: { type: Type.STRING, description: 'Tujuan utama website' },
+                  primaryCTA: { type: Type.STRING, description: 'Call to Action utama (misal: WhatsApp)' },
+                  primaryColor: { type: Type.STRING, description: 'Rekomendasi warna utama' },
+                  colorTone: { type: Type.STRING, description: 'Tone warna canvas' },
+                  typographyPairing: { type: Type.STRING, description: 'Pasangan font' },
+                  designThemeId: { type: Type.STRING, description: 'ID Tema Desain terpilih (modern-minimalist, neo-brutalism, bento-grid, editorial-elegant, playful-organic, dark-luxury)' },
+                  contentLanguage: { type: Type.STRING, description: 'Indonesian, English, atau Bilingual' },
+                  specialRequirements: { type: Type.STRING, description: 'Kebutuhan khusus' },
+                  suggestedPages: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        pageName: { type: Type.STRING },
+                        pageSlug: { type: Type.STRING },
+                        pageType: { type: Type.STRING },
+                        pagePurpose: { type: Type.STRING },
+                        keySections: {
+                          type: Type.ARRAY,
+                          items: { type: Type.STRING },
+                        },
+                        isInMainNav: { type: Type.BOOLEAN },
+                        metaTitle: { type: Type.STRING, description: 'Rekomendasi Meta Title SEO (≤60 karakter)' },
+                        metaDescription: { type: Type.STRING, description: 'Rekomendasi Meta Description SEO (120–160 karakter)' },
                       },
-                      isInMainNav: { type: Type.BOOLEAN },
-                      metaTitle: { type: Type.STRING, description: 'Rekomendasi Meta Title SEO (≤60 karakter)' },
-                      metaDescription: { type: Type.STRING, description: 'Rekomendasi Meta Description SEO (120–160 karakter)' },
+                      required: ['pageName', 'pageSlug', 'pageType', 'pagePurpose', 'isInMainNav'],
                     },
-                    required: ['pageName', 'pageSlug', 'pageType', 'pagePurpose', 'isInMainNav'],
                   },
                 },
               },
             },
-          },
-        });
+          });
 
-        jsonText = response.text || '{}';
-        lastError = null;
-        break; // Success
-      } catch (err: any) {
-        lastError = err;
-        console.warn('API key candidate failed, trying next candidate key...');
+          jsonText = response.text || '{}';
+          modelUsed = modelCandidate;
+          lastError = null;
+          break keyLoop; // Success
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`Candidate key or model (${modelCandidate}) failed, trying next option...`);
+        }
       }
     }
 
@@ -247,6 +262,7 @@ app.post('/api/analyze-brief', async (req, res) => {
     }
 
     const parsed: BriefAnalysisResponse = JSON.parse(jsonText || '{}');
+    parsed.modelUsed = modelUsed;
 
     return res.json({
       success: true,
@@ -267,6 +283,14 @@ app.post('/api/generate-prd', async (req, res) => {
       return res.status(400).json({ error: 'Data form PRD tidak ditemukan.' });
     }
 
+    if (formState.pages && formState.pages.length > 20) {
+      return res.status(400).json({ error: 'Jumlah halaman melebihi batas maksimum (maksimal 20 halaman).' });
+    }
+
+    if (formState.rawBrief && formState.rawBrief.length > 5000) {
+      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 5000 karakter).' });
+    }
+
     const candidateKeys = getAllCandidateKeys(req);
     if (candidateKeys.length === 0) {
       return res.status(400).json({
@@ -274,42 +298,52 @@ app.post('/api/generate-prd', async (req, res) => {
       });
     }
 
+    const candidateModels = getModelFallbackChain();
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(formState);
     let markdownOutput = '';
+    let modelUsed = GEMINI_MODEL;
     let lastError: any = null;
 
-    for (const apiKey of candidateKeys) {
-      try {
-        const ai = new GoogleGenAI({
-          apiKey,
-          httpOptions: {
-            headers: {
-              'User-Agent': 'aistudio-build',
+    keyLoop: for (const apiKey of candidateKeys) {
+      for (const modelCandidate of candidateModels) {
+        try {
+          const ai = new GoogleGenAI({
+            apiKey,
+            httpOptions: {
+              headers: {
+                'User-Agent': 'aistudio-build',
+              },
             },
-          },
-        });
+          });
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.6-flash',
-          contents: userPrompt,
-          config: {
-            systemInstruction: systemPrompt,
-            temperature: 0.7,
-          },
-        });
+          const response = await ai.models.generateContent({
+            model: modelCandidate,
+            contents: userPrompt,
+            config: {
+              systemInstruction: systemPrompt,
+            },
+          });
 
-        markdownOutput = response.text || '# PRD Generation Failed';
-        lastError = null;
-        break; // Success
-      } catch (err: any) {
-        lastError = err;
-        console.warn('API key candidate failed, trying next candidate key...');
+          markdownOutput = response.text || '# PRD Generation Failed';
+          modelUsed = modelCandidate;
+          lastError = null;
+          break keyLoop; // Success
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`Candidate key or model (${modelCandidate}) failed, trying next option...`);
+        }
       }
     }
 
     if (!markdownOutput && lastError) {
       throw lastError;
+    }
+
+    // Trim preamble text before first H1 header `# `
+    const h1Index = markdownOutput.indexOf('# ');
+    if (h1Index !== -1 && h1Index < 500) {
+      markdownOutput = markdownOutput.substring(h1Index);
     }
 
     // Calculate readiness score & reasons based on PRD & Form quality
@@ -368,6 +402,7 @@ app.post('/api/generate-prd', async (req, res) => {
         passed,
         warnings,
       },
+      modelUsed,
     };
 
     return res.json(responseData);

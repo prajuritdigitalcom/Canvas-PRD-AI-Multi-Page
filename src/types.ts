@@ -74,6 +74,7 @@ export interface PRDGenerateResponse {
   markdown: string;
   readyScore: number;
   scoreReasons: PRDScoreBreakdown;
+  modelUsed?: string;
 }
 
 export interface BriefAnalysisResponse {
@@ -90,6 +91,7 @@ export interface BriefAnalysisResponse {
   contentLanguage?: ProjectFormState['contentLanguage'];
   specialRequirements?: string;
   suggestedPages?: PageDefinition[];
+  modelUsed?: string;
 }
 
 export interface SavedPRD {

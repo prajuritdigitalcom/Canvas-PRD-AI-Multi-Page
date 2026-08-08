@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PageDefinition, PageType, ProjectFormState } from '../types';
 import { PAGE_PRESETS } from '../data/pagePresets';
-import { Plus, Trash2, ArrowUp, ArrowDown, Layout, Globe, Sparkles, Info } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Layout, Globe, Sparkles, Info, AlertCircle } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface PageBuilderProps {
   pages: PageDefinition[];
@@ -14,7 +15,16 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
   onChangePages,
   websiteType,
 }) => {
+  const [confirmPreset, setConfirmPreset] = useState<{ id: string; name: string } | null>(null);
+  const [deleteWarning, setDeleteWarning] = useState<string | null>(null);
+
+  const MAX_PAGES = 20;
+
   const addPage = () => {
+    if (pages.length >= MAX_PAGES) {
+      alert(`Batas maksimum ${MAX_PAGES} halaman telah tercapai.`);
+      return;
+    }
     const newPageNumber = pages.length + 1;
     const newPage: PageDefinition = {
       id: 'page-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -31,7 +41,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
 
   const removePage = (id: string) => {
     if (pages.length <= 1) {
-      alert('Website multi-halaman membutuhkan minimal 1 halaman dasar.');
+      setDeleteWarning('Website multi-halaman membutuhkan minimal 1 halaman dasar.');
       return;
     }
     const filtered = pages.filter((p) => p.id !== id).map((p, idx) => ({ ...p, order: idx + 1 }));
@@ -65,13 +75,16 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
     onChangePages(reordered);
   };
 
-  const applyPreset = (presetId: string) => {
+  const handleApplyPresetClick = (presetId: string) => {
     const preset = PAGE_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
-    
-    if (pages.length > 0 && !confirm(`Ganti ${pages.length} halaman saat ini dengan template preset "${preset.name}"?`)) {
-      return;
-    }
+    setConfirmPreset({ id: preset.id, name: preset.name });
+  };
+
+  const confirmApplyPreset = () => {
+    if (!confirmPreset) return;
+    const preset = PAGE_PRESETS.find((p) => p.id === confirmPreset.id);
+    if (!preset) return;
 
     const newPages: PageDefinition[] = preset.pages.map((p, idx) => ({
       ...p,
@@ -79,6 +92,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
       order: idx + 1,
     }));
     onChangePages(newPages);
+    setConfirmPreset(null);
   };
 
   const slugify = (text: string) => {
@@ -108,16 +122,44 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+      {/* Confirm preset modal */}
+      <ConfirmModal
+        isOpen={!!confirmPreset}
+        title="Ganti Template Preset Halaman?"
+        message={`Apakah Anda yakin ingin mengganti ${pages.length} halaman saat ini dengan template preset "${confirmPreset?.name}"? Data halaman yang telah Anda ketik akan digantikan dengan preset.`}
+        confirmText="Ganti Preset"
+        cancelText="Batal"
+        variant="warning"
+        onConfirm={confirmApplyPreset}
+        onCancel={() => setConfirmPreset(null)}
+      />
+
+      {/* Delete warning modal */}
+      <ConfirmModal
+        isOpen={!!deleteWarning}
+        title="Tidak Dapat Menghapus Halaman"
+        message={deleteWarning || ''}
+        confirmText="Mengerti"
+        cancelText=""
+        variant="primary"
+        onConfirm={() => setDeleteWarning(null)}
+        onCancel={() => setDeleteWarning(null)}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
             <Layout className="w-4 h-4 text-[#fe4c6f]" />
-            <span>ARSIREKTUR MULTI-HALAMAN</span>
+            <span>ARSITEKTUR MULTI-HALAMAN</span>
           </div>
           <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
             Page Builder & Routing Map
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#fe4c6f]/10 text-[#fe4c6f] font-bold border border-[#fe4c6f]/20">
-              {pages.length} Halaman
+            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+              pages.length >= MAX_PAGES
+                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                : 'bg-[#fe4c6f]/10 text-[#fe4c6f] border-[#fe4c6f]/20'
+            }`}>
+              {pages.length}/{MAX_PAGES} Halaman
             </span>
           </h3>
           <p className="text-sm text-slate-500 mt-1">
@@ -130,7 +172,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
           <div className="relative group">
             <button
               type="button"
-              className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200 flex items-center gap-2 transition-all shadow-xs"
+              className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-200 flex items-center gap-2 transition-all shadow-xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-[#fe4c6f]" />
               <span>Gunakan Preset Halaman</span>
@@ -144,8 +186,8 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => applyPreset(p.id)}
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fe4c6f]/10 hover:text-[#fe4c6f] text-slate-700 text-xs flex flex-col gap-0.5 transition-colors"
+                    onClick={() => handleApplyPresetClick(p.id)}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#fe4c6f]/10 hover:text-[#fe4c6f] text-slate-700 text-xs flex flex-col gap-0.5 transition-colors cursor-pointer"
                   >
                     <span className="font-bold text-slate-900">{p.name}</span>
                     <span className="text-[10px] text-slate-500 line-clamp-1">{p.description}</span>
@@ -158,13 +200,23 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
           <button
             type="button"
             onClick={addPage}
-            className="px-4 py-2 rounded-xl bg-[#fe4c6f] hover:bg-[#e03b5b] text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+            disabled={pages.length >= MAX_PAGES}
+            className="px-4 py-2 rounded-xl bg-[#fe4c6f] hover:bg-[#e03b5b] disabled:opacity-40 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Halaman</span>
           </button>
         </div>
       </div>
+
+      {pages.length >= MAX_PAGES && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 text-amber-900 p-3.5 rounded-xl text-xs font-medium">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>
+            Batas maksimum 20 halaman tercapai. Anda tidak dapat menambah halaman lagi demi menjaga performa analisis AI.
+          </span>
+        </div>
+      )}
 
       {pages.length < 2 && (
         <div className="flex items-center gap-3 bg-pink-50 border border-pink-200 text-slate-800 p-3.5 rounded-xl text-xs font-medium">
@@ -215,7 +267,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                     type="button"
                     onClick={() => movePage(index, 'up')}
                     disabled={index === 0}
-                    className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
+                    className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
                     title="Naikkan urutan"
                   >
                     <ArrowUp className="w-3.5 h-3.5" />
@@ -224,7 +276,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                     type="button"
                     onClick={() => movePage(index, 'down')}
                     disabled={index === pages.length - 1}
-                    className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
+                    className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
                     title="Turunkan urutan"
                   >
                     <ArrowDown className="w-3.5 h-3.5" />
@@ -234,7 +286,7 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
                 <button
                   type="button"
                   onClick={() => removePage(page.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                   title="Hapus Halaman"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -344,4 +396,3 @@ export const PageBuilder: React.FC<PageBuilderProps> = ({
     </div>
   );
 };
-
