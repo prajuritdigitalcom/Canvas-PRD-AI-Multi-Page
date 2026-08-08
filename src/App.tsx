@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectFormState, PRDGenerateResponse, SavedPRD, PageDefinition } from './types';
 import { PAGE_PRESETS } from './data/pagePresets';
-import { SAMPLE_PROJECT } from './data/sampleProject';
+import { SAMPLE_PROJECTS } from './data/sampleProject';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { GeneratorForm } from './components/GeneratorForm';
@@ -325,31 +325,34 @@ export default function App() {
     });
   };
 
-  const handleFillSampleData = () => {
+  const handleFillSampleData = (sampleId?: string) => {
+    const targetId = typeof sampleId === 'string' ? sampleId : 'company-profile';
+    const sample = SAMPLE_PROJECTS.find((s) => s.id === targetId) || SAMPLE_PROJECTS[0];
+
+    const applySample = () => {
+      setFormState({
+        ...sample.data,
+        pages: sample.data.pages.map((p) => ({ ...p })),
+      });
+      showToast(`Contoh data "${sample.label}" berhasil diisikan ke form!`, 'success');
+    };
+
     if (formState.projectName || formState.rawBrief) {
       setConfirmModal({
         isOpen: true,
         title: 'Isi Contoh Data Otomatis?',
-        message: 'Form akan diisi dengan data contoh bisnis "KonsultanPajakKu" dan menimpa isian yang sudah Anda tulis. Lanjutkan?',
+        message: `Form akan diisi dengan data contoh kategori "${sample.label}" (${sample.shortDescription}) dan menimpa isian yang sudah Anda tulis. Lanjutkan?`,
         confirmText: 'Isi Contoh Data',
         variant: 'primary',
         onConfirm: () => {
-          setFormState({
-            ...SAMPLE_PROJECT,
-            pages: SAMPLE_PROJECT.pages.map((p) => ({ ...p })),
-          });
+          applySample();
           setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-          showToast('Contoh data berhasil diisikan ke form!', 'success');
         },
       });
       return;
     }
 
-    setFormState({
-      ...SAMPLE_PROJECT,
-      pages: SAMPLE_PROJECT.pages.map((p) => ({ ...p })),
-    });
-    showToast('Contoh data berhasil diisikan ke form!', 'success');
+    applySample();
   };
 
   return (
@@ -415,15 +418,18 @@ export default function App() {
                     Aplikasi ini membantu Anda membuat rancangan website multi-halaman, lengkap dengan PRD profesional yang siap digunakan untuk membangun website dengan lebih cepat dan terstruktur.
                   </p>
 
-                  <div className="flex items-center justify-center pt-1">
-                    <button
-                      type="button"
-                      onClick={handleFillSampleData}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors border border-slate-200 cursor-pointer"
-                    >
-                      <Wand2 className="w-3.5 h-3.5 text-[#fe4c6f]" />
-                      <span>Coba dengan Contoh Data (Isi Otomatis)</span>
-                    </button>
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                    {SAMPLE_PROJECTS.map((sample) => (
+                      <button
+                        key={sample.id}
+                        type="button"
+                        onClick={() => handleFillSampleData(sample.id)}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors border border-slate-200 cursor-pointer"
+                      >
+                        <Wand2 className="w-3.5 h-3.5 text-[#fe4c6f]" />
+                        <span>Coba: {sample.label}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -445,6 +451,7 @@ export default function App() {
                   isGenerating={isGenerating}
                   visitorApiKeys={visitorApiKeys}
                   onFillSample={handleFillSampleData}
+                  onResetForm={handleNewPRD}
                   onShowToast={showToast}
                 />
               )}

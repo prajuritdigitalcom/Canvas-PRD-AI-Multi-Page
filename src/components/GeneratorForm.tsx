@@ -3,6 +3,7 @@ import { ProjectFormState } from '../types';
 import { PageBuilder } from './PageBuilder';
 import { SharedLayoutForm } from './SharedLayoutForm';
 import { ThemeFoundationSelector } from './ThemeFoundationSelector';
+import { SAMPLE_PROJECTS } from '../data/sampleProject';
 import {
   Sparkles,
   Building2,
@@ -11,6 +12,7 @@ import {
   Loader2,
   Wand2,
   ArrowRight,
+  RotateCcw,
 } from 'lucide-react';
 import { ToastType } from './Toast';
 
@@ -20,7 +22,8 @@ interface GeneratorFormProps {
   onSubmitGenerate: () => void;
   isGenerating: boolean;
   visitorApiKeys: string[];
-  onFillSample?: () => void;
+  onFillSample?: (sampleId: string) => void;
+  onResetForm?: () => void;
   onShowToast?: (message: string, type: ToastType, onRetry?: () => void) => void;
 }
 
@@ -31,10 +34,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   isGenerating,
   visitorApiKeys,
   onFillSample,
+  onResetForm,
   onShowToast,
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeSuccess, setAnalyzeSuccess] = useState(false);
+  const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
 
   const updateForm = (updates: Partial<ProjectFormState>) => {
     onChangeForm({ ...formState, ...updates });
@@ -149,16 +154,51 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
               Masukkan ide bisnis atau brief. AI akan menyusun halaman website secara otomatis.
             </p>
           </div>
-          {onFillSample && (
-            <button
-              type="button"
-              onClick={onFillSample}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors border border-slate-200 shrink-0 self-start md:self-auto cursor-pointer"
-            >
-              <Wand2 className="w-3.5 h-3.5 text-[#fe4c6f]" />
-              <span>Isi Contoh Otomatis</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
+            {onResetForm && (
+              <button
+                type="button"
+                onClick={onResetForm}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-red-50 text-slate-600 hover:text-red-600 text-xs font-bold transition-colors border border-slate-200 hover:border-red-200 cursor-pointer"
+                title="Kosongkan semua isian form"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Form</span>
+              </button>
+            )}
+
+            {onFillSample && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setSampleMenuOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors border border-slate-200 cursor-pointer"
+                >
+                  <Wand2 className="w-3.5 h-3.5 text-[#fe4c6f]" />
+                  <span>Isi Contoh Otomatis</span>
+                </button>
+
+                {sampleMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                    {SAMPLE_PROJECTS.map((sample) => (
+                      <button
+                        key={sample.id}
+                        type="button"
+                        onClick={() => {
+                          onFillSample(sample.id);
+                          setSampleMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 cursor-pointer"
+                      >
+                        <div className="text-xs font-bold text-slate-800">{sample.label}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{sample.shortDescription}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Brief Textarea & Auto Analyze Button */}
