@@ -1,11 +1,12 @@
 import React from 'react';
-import { Sparkles, Plus, Clock } from 'lucide-react';
+import { Sparkles, Plus, Clock, Lock } from 'lucide-react';
 
 interface HeaderProps {
   onNewPRD: () => void;
   lastSavedAt: string | null;
   aiMode: 'auto' | 'manual';
   onToggleAiMode: (mode: 'auto' | 'manual') => void;
+  onLockSite?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -13,6 +14,7 @@ export const Header: React.FC<HeaderProps> = ({
   lastSavedAt,
   aiMode,
   onToggleAiMode,
+  onLockSite,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
@@ -36,6 +38,19 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Center/Right Actions */}
         <div className="flex flex-wrap items-center gap-3">
+          {/* Lock site button */}
+          {onLockSite && (
+            <button
+              type="button"
+              onClick={onLockSite}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition-all border border-slate-200 cursor-pointer"
+              title="Kunci Akses Website"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Kunci Website</span>
+            </button>
+          )}
+
           {/* Mode switch */}
           <div className="bg-slate-100 border border-slate-200 p-1 rounded-xl flex items-center text-xs">
             <button

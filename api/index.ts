@@ -113,6 +113,103 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Password Lock Configuration
+const EXPECTED_PASSWORD = process.env.PASSWORD || 'adminku2@prajuritdigital.com';
+
+interface LockoutState {
+  failedAttempts: number;
+  lockedUntil: number;
+}
+const ipLockoutMap = new Map<string, LockoutState>();
+
+const getClientIp = (req: express.Request): string => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+};
+
+// API: Check Lock Status
+app.get('/api/check-lock', (req, res) => {
+  const clientIp = getClientIp(req);
+  const state = ipLockoutMap.get(clientIp);
+  const now = Date.now();
+
+  if (state && state.lockedUntil > now) {
+    return res.json({
+      isLocked: true,
+      lockedUntil: state.lockedUntil,
+      remainingAttempts: 0,
+    });
+  }
+
+  const remaining = state ? Math.max(0, 3 - state.failedAttempts) : 3;
+  return res.json({
+    isLocked: false,
+    remainingAttempts: remaining,
+  });
+});
+
+// API: Verify Password
+app.post('/api/verify-password', (req, res) => {
+  const { password } = req.body || {};
+  const clientIp = getClientIp(req);
+  const now = Date.now();
+
+  let state = ipLockoutMap.get(clientIp) || { failedAttempts: 0, lockedUntil: 0 };
+
+  if (state.lockedUntil > now) {
+    return res.status(429).json({
+      success: false,
+      isLocked: true,
+      lockedUntil: state.lockedUntil,
+      attemptsLeft: 0,
+      message: 'Akses dikunci selama 12 jam karena 3x gagal.',
+    });
+  }
+
+  if (state.lockedUntil > 0 && now >= state.lockedUntil) {
+    state = { failedAttempts: 0, lockedUntil: 0 };
+  }
+
+  if (typeof password === 'string' && password.trim() === EXPECTED_PASSWORD) {
+    ipLockoutMap.delete(clientIp);
+    const sessionToken = Buffer.from(`auth_${Date.now()}_${Math.random()}`).toString('base64');
+    return res.json({
+      success: true,
+      message: 'Password benar! Website dibuka.',
+      token: sessionToken,
+    });
+  } else {
+    state.failedAttempts += 1;
+    const attemptsLeft = Math.max(0, 3 - state.failedAttempts);
+
+    if (state.failedAttempts >= 3) {
+      const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+      state.lockedUntil = now + TWELVE_HOURS_MS;
+      ipLockoutMap.set(clientIp, state);
+
+      return res.status(403).json({
+        success: false,
+        isLocked: true,
+        lockedUntil: state.lockedUntil,
+        attemptsLeft: 0,
+        message: 'Password salah 3x berturut-turut! Akses dikunci selama 12 jam.',
+      });
+    } else {
+      ipLockoutMap.set(clientIp, state);
+
+      return res.status(401).json({
+        success: false,
+        isLocked: false,
+        attemptsLeft,
+        message: `Password salah! Sisa percobaan: ${attemptsLeft}x lagi.`,
+      });
+    }
+  }
+});
+
 const verifyKeyWithGoogle = async (
   key: string
 ): Promise<{ valid: boolean; reason?: string }> => {

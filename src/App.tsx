@@ -10,6 +10,7 @@ import { HistoryView } from './components/HistoryView';
 import { SettingsView } from './components/SettingsView';
 import { Toast, ToastType } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
+import { PasswordLockModal } from './components/PasswordLockModal';
 import { Wand2 } from 'lucide-react';
 
 const DEFAULT_PAGES: PageDefinition[] = PAGE_PRESETS[0].pages.map((p, idx) => ({
@@ -47,6 +48,9 @@ const DEFAULT_FORM_STATE: ProjectFormState = {
 };
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return Boolean(localStorage.getItem('prd_auth_token'));
+  });
   const [activeTab, setActiveTab] = useState<'generator' | 'history' | 'settings'>('generator');
   const [formState, setFormState] = useState<ProjectFormState>(DEFAULT_FORM_STATE);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -358,8 +362,24 @@ export default function App() {
     applySample();
   };
 
+  const handleLockSite = () => {
+    localStorage.removeItem('prd_auth_token');
+    setIsAuthenticated(false);
+    showToast('Akses website berhasil dikunci.', 'info');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-[#fe4c6f] selection:text-white">
+      {/* Password Lock Modal */}
+      {!isAuthenticated && (
+        <PasswordLockModal
+          onSuccess={() => {
+            setIsAuthenticated(true);
+            showToast('Akses berhasil dibuka! Selamat datang.', 'success');
+          }}
+        />
+      )}
+
       {/* Toast Notification */}
       {toast && (
         <Toast
@@ -387,6 +407,7 @@ export default function App() {
         lastSavedAt={lastSavedAt}
         aiMode={formState.aiMode}
         onToggleAiMode={(mode) => setFormState({ ...formState, aiMode: mode })}
+        onLockSite={handleLockSite}
       />
 
       {/* Main Layout Area */}
