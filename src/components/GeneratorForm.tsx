@@ -4,6 +4,7 @@ import { PageBuilder } from './PageBuilder';
 import { SharedLayoutForm } from './SharedLayoutForm';
 import { ThemeFoundationSelector } from './ThemeFoundationSelector';
 import { SAMPLE_PROJECTS } from '../data/sampleProject';
+import { extractGoogleSiteVerification } from '../utils/seo';
 import {
   Sparkles,
   Building2,
@@ -363,7 +364,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         <div className="border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
             <Palette className="w-4 h-4 text-[#fe4c6f]" />
-            <span>IDENTITAS VISUAL & BRANDING</span>
+            <span>IDENTITAS & VISUAL BRANDING</span>
           </div>
           <h3 className="text-xl font-extrabold text-slate-900">Gaya Desain, Warna & Tipografi</h3>
           <p className="text-sm text-slate-500 mt-1">
@@ -426,13 +427,25 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </select>
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-slate-700 font-semibold mb-1.5">Persyaratan Khusus</label>
             <input
               type="text"
               value={formState.specialRequirements}
               onChange={(e) => updateForm({ specialRequirements: e.target.value })}
-              placeholder="Contoh: Integrasi WhatsApp pendaftaran, desain ramah mobile, animasi halus..."
+              placeholder="Contoh: Integrasi WhatsApp, ramah mobile, animasi..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-700 font-semibold mb-1.5">Tag Verifikasi Google Search Console</label>
+            <input
+              type="text"
+              value={formState.googleSiteVerification || ''}
+              onChange={(e) => updateForm({ googleSiteVerification: e.target.value })}
+              onBlur={(e) => updateForm({ googleSiteVerification: extractGoogleSiteVerification(e.target.value) })}
+              placeholder="Tempel kode atau baris <meta> lengkap dari Search Console, sistem otomatis membersihkannya"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fe4c6f]"
             />
           </div>

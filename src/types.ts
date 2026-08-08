@@ -60,7 +60,8 @@ export interface ProjectFormState {
   designThemeId: string;
   contentLanguage: 'Indonesian' | 'English' | 'Bilingual';
   specialRequirements: string;
-  
+  googleSiteVerification?: string; // Kode/tag HTML verifikasi Google Search Console (opsional)
+
   // Form Mode
   aiMode: 'auto' | 'manual';
 }

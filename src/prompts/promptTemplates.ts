@@ -1,5 +1,6 @@
 import { ProjectFormState } from '../types.js';
 import { DESIGN_THEMES } from '../data/designThemes.js';
+import { extractGoogleSiteVerification } from '../utils/seo.js';
 
 function formatThemeRules(themeId: string): string {
   const theme = DESIGN_THEMES.find((t) => t.id === themeId) || DESIGN_THEMES[0];
@@ -182,6 +183,14 @@ ${pagesFormatted}
 - **Tone Warna Canvas**: ${form.colorTone || 'Clean & Bright (Light theme)'}
 - **Pasangan Tipografi (Font Pairing)**: ${form.typographyPairing || 'Plus Jakarta Sans (Body) + Playfair Display (Heading)'}
 - **Persyaratan Khusus**: ${form.specialRequirements || 'Pastikan responsif penuh dan cepat diakses.'}
+- **Tag Verifikasi Google Search Console**: ${
+    (() => {
+      const code = extractGoogleSiteVerification(form.googleSiteVerification || '');
+      return code
+        ? `WAJIB tambahkan meta tag berikut persis di dalam <head> pada index.html/document utama, sebelum tag <title> jika memungkinkan: <meta name="google-site-verification" content="${code}" />`
+        : 'Tidak ada, lewati (tidak perlu menambahkan meta tag verifikasi).';
+    })()
+  }
 
 Tolong hasilkan PRD utuh sesuai struktur 13 section yang diwajibkan! LANGSUNG MULAI DENGAN HEADING "# [NAMA PROJECT]" TANPA KALIMAT PEMBUKA.`;
 }

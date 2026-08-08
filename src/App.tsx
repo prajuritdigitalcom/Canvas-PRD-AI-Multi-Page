@@ -44,6 +44,7 @@ const DEFAULT_FORM_STATE: ProjectFormState = {
   designThemeId: 'modern-minimalist',
   contentLanguage: 'Indonesian',
   specialRequirements: 'Responsif penuh, ramah mobile, dan cepat diakses',
+  googleSiteVerification: '',
   aiMode: 'auto',
 };
 
