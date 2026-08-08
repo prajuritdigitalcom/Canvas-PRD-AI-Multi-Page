@@ -138,6 +138,25 @@ const verifyKeyWithGoogle = async (
   }
 };
 
+const SUSPICIOUS_PATTERNS = [
+  'ignore previous instructions',
+  'ignore all previous',
+  'disregard previous instructions',
+  'abaikan instruksi sebelumnya',
+  'abaikan semua instruksi',
+  'reveal system prompt',
+  'show system prompt',
+  'reveal your instructions',
+  'system prompt:',
+  'override system instructions',
+];
+
+function isSuspiciousPromptInjection(text: string): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return SUSPICIOUS_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
 // API: Validate visitor Gemini API keys
 app.post('/api/validate-keys', async (req, res) => {
   try {
@@ -173,8 +192,12 @@ app.post('/api/analyze-brief', async (req, res) => {
       return res.status(400).json({ error: 'Brief mentah wajib diisi.' });
     }
 
-    if (rawBrief.length > 5000) {
-      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 5000 karakter). Mohon persingkat brief Anda.' });
+    if (rawBrief.length > 10000) {
+      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 10000 karakter). Mohon persingkat brief Anda.' });
+    }
+
+    if (isSuspiciousPromptInjection(rawBrief)) {
+      return res.status(400).json({ error: 'Brief mentah terdeteksi mengandung instruksi ilegal atau manipulasi prompt. Mohon masukkan deskripsi bisnis yang valid.' });
     }
 
     const candidateKeys = getAllCandidateKeys(req);
@@ -291,8 +314,12 @@ app.post('/api/generate-prd', async (req, res) => {
       return res.status(400).json({ error: 'Jumlah halaman melebihi batas maksimum (maksimal 20 halaman).' });
     }
 
-    if (formState.rawBrief && formState.rawBrief.length > 5000) {
-      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 5000 karakter).' });
+    if (formState.rawBrief && formState.rawBrief.length > 10000) {
+      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 10000 karakter).' });
+    }
+
+    if (formState.rawBrief && isSuspiciousPromptInjection(formState.rawBrief)) {
+      return res.status(400).json({ error: 'Brief mentah terdeteksi mengandung instruksi ilegal atau manipulasi prompt. Mohon masukkan deskripsi bisnis yang valid.' });
     }
 
     const candidateKeys = getAllCandidateKeys(req);

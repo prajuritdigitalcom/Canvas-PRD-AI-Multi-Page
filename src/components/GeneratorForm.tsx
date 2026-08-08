@@ -46,8 +46,8 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       return;
     }
 
-    if (formState.rawBrief.length > 5000) {
-      onShowToast?.('Brief mentah terlalu panjang (maksimal 5000 karakter). Mohon persingkat brief Anda.', 'warning');
+    if (formState.rawBrief.length > 10000) {
+      onShowToast?.('Brief mentah terlalu panjang (maksimal 10000 karakter). Mohon persingkat brief Anda.', 'warning');
       return;
     }
 
