@@ -155,7 +155,10 @@ export default function App() {
     try {
       const storedHistory = localStorage.getItem('ai_studio_prd_history');
       if (storedHistory) {
-        setSavedPRDs(JSON.parse(storedHistory));
+        const parsed = JSON.parse(storedHistory);
+        if (Array.isArray(parsed)) {
+          setSavedPRDs(parsed.slice(0, 10));
+        }
       }
     } catch (e) {
       console.error('Failed to parse PRD history', e);
@@ -233,7 +236,7 @@ export default function App() {
       };
 
       setSavedPRDs((prev) => {
-        const updatedHistory = [newSaved, ...prev];
+        const updatedHistory = [newSaved, ...prev].slice(0, 10);
         try {
           localStorage.setItem('ai_studio_prd_history', JSON.stringify(updatedHistory));
         } catch (e) {
@@ -267,7 +270,7 @@ export default function App() {
       markdown: prdResult.markdown,
     };
 
-    const updated = [newSaved, ...savedPRDs];
+    const updated = [newSaved, ...savedPRDs.filter((item) => item.id !== newSaved.id)].slice(0, 10);
     setSavedPRDs(updated);
     try {
       localStorage.setItem('ai_studio_prd_history', JSON.stringify(updated));

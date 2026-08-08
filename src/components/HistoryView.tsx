@@ -25,12 +25,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ savedPRDs, onSelectPRD
           <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider mb-1">
             <FileCode2 className="w-4 h-4 text-[#fe4c6f]" />
             <span>RIWAYAT TERSIMPAN</span>
+            <span className="ml-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-extrabold border border-slate-200">
+              {savedPRDs.length} / 10 Tersimpan
+            </span>
           </div>
           <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900">
             Daftar PRD Multi-Halaman Tersimpan
           </h2>
           <p className="text-sm text-slate-600 leading-relaxed max-w-2xl mt-1">
-            Seluruh PRD yang pernah Anda generate tersimpan dengan aman di penyimpanan lokal browser.
+            Sistem menyimpan maksimal 10 PRD terbaru secara otomatis di penyimpanan lokal browser Anda.
           </p>
         </div>
 
