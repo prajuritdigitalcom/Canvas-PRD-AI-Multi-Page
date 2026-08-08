@@ -113,6 +113,31 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+const verifyKeyWithGoogle = async (
+  key: string
+): Promise<{ valid: boolean; reason?: string }> => {
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
+      { headers: { 'User-Agent': 'aistudio-build' } }
+    );
+
+    if (response.ok) {
+      return { valid: true };
+    }
+
+    const body = await response.json().catch(() => null);
+    const reason =
+      body?.error?.status || body?.error?.message || `Ditolak Google (HTTP ${response.status})`;
+    return { valid: false, reason };
+  } catch (err: any) {
+    return {
+      valid: false,
+      reason: 'Gagal menghubungi server Google: ' + (err?.message || 'unknown error'),
+    };
+  }
+};
+
 // API: Validate visitor Gemini API keys
 app.post('/api/validate-keys', async (req, res) => {
   try {
@@ -127,31 +152,10 @@ app.post('/api/validate-keys', async (req, res) => {
       .map((k) => (typeof k === 'string' ? k.trim() : ''))
       .filter(Boolean);
 
-    const candidateModels = getModelFallbackChain();
-
     const results = await Promise.all(
       candidates.map(async (key) => {
-        for (const modelCandidate of candidateModels) {
-          try {
-            const ai = new GoogleGenAI({
-              apiKey: key,
-              httpOptions: {
-                headers: {
-                  'User-Agent': 'aistudio-build',
-                },
-              },
-            });
-            await ai.models.generateContent({
-              model: modelCandidate,
-              contents: 'ping',
-              config: { maxOutputTokens: 1 },
-            });
-            return { key, valid: true, modelUsed: modelCandidate };
-          } catch {
-            // Try next model candidate if primary fails
-          }
-        }
-        return { key, valid: false, reason: 'Key ditolak Google' };
+        const result = await verifyKeyWithGoogle(key);
+        return { key, ...result };
       })
     );
 

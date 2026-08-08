@@ -1,3 +1,15 @@
+export interface ResponsiveFontToken {
+  desktop: string;
+  tablet: string;
+  mobile: string;
+}
+
+export interface ColorContrastPair {
+  backgroundToken: string;
+  textToken: string;
+  usage: string;
+}
+
 export interface DesignThemeRule {
   id: string;
   name: string;
@@ -12,6 +24,17 @@ export interface DesignThemeRule {
     spacing: string;
     imagery: string;
     forbidden: string[]; // hal yang DILARANG agar tidak jatuh ke default generik
+    typographyScale: {
+      h1: ResponsiveFontToken;
+      h2: ResponsiveFontToken;
+      h3: ResponsiveFontToken;
+      h4: ResponsiveFontToken;
+      bodyLarge: ResponsiveFontToken;
+      body: ResponsiveFontToken;
+      bodySmall: ResponsiveFontToken;
+      caption: ResponsiveFontToken;
+    };
+    colorContrastPairs: ColorContrastPair[];
   };
   // hanya untuk ditampilkan di UI (popup referensi), TIDAK dikirim ke prompt AI:
   referenceExamples: {
@@ -40,6 +63,21 @@ export const DESIGN_THEMES: DesignThemeRule[] = [
         'DILARANG lebih dari 1 warna aksen mencolok',
         'DILARANG animasi/motion berlebihan yang mengalihkan fokus dari konten',
       ],
+      typographyScale: {
+        h1: { desktop: '48px, bold', tablet: '38px, bold', mobile: '30px, bold' },
+        h2: { desktop: '36px, bold', tablet: '30px, bold', mobile: '24px, bold' },
+        h3: { desktop: '28px, semibold', tablet: '24px, semibold', mobile: '20px, semibold' },
+        h4: { desktop: '22px, semibold', tablet: '20px, semibold', mobile: '18px, semibold' },
+        bodyLarge: { desktop: '18px, regular', tablet: '17px, regular', mobile: '16px, regular' },
+        body: { desktop: '16px, regular', tablet: '16px, regular', mobile: '15px, regular' },
+        bodySmall: { desktop: '14px, regular', tablet: '14px, regular', mobile: '13px, regular' },
+        caption: { desktop: '12px, medium', tablet: '12px, medium', mobile: '12px, medium' },
+      },
+      colorContrastPairs: [
+        { backgroundToken: 'Surface Light (#FFFFFF)', textToken: 'Text Dark (#0F172A)', usage: 'Section dengan latar terang standar' },
+        { backgroundToken: 'Surface Muted (#F8FAFC)', textToken: 'Text Dark (#0F172A)', usage: 'Section alternating background' },
+        { backgroundToken: 'Surface Dark (#0F172A)', textToken: 'Text Light (#F8FAFC)', usage: 'Section CTA / footer latar gelap' },
+      ],
     },
     referenceExamples: [
       { name: 'Linear', url: 'https://linear.app', note: 'Whitespace luas, satu warna aksen, tipografi presisi.' },
@@ -65,6 +103,21 @@ export const DESIGN_THEMES: DesignThemeRule[] = [
         'DILARANG soft drop-shadow standar (blur besar, opacity rendah)',
         'DILARANG palet warna pastel lembut',
       ],
+      typographyScale: {
+        h1: { desktop: '56px, black/extrabold', tablet: '42px, black/extrabold', mobile: '32px, black/extrabold' },
+        h2: { desktop: '40px, extrabold', tablet: '32px, extrabold', mobile: '26px, extrabold' },
+        h3: { desktop: '30px, bold', tablet: '25px, bold', mobile: '22px, bold' },
+        h4: { desktop: '24px, bold', tablet: '21px, bold', mobile: '18px, bold' },
+        bodyLarge: { desktop: '18px, medium', tablet: '17px, medium', mobile: '16px, medium' },
+        body: { desktop: '16px, medium', tablet: '16px, medium', mobile: '15px, medium' },
+        bodySmall: { desktop: '14px, bold', tablet: '14px, bold', mobile: '13px, bold' },
+        caption: { desktop: '12px, bold', tablet: '12px, bold', mobile: '12px, bold' },
+      },
+      colorContrastPairs: [
+        { backgroundToken: 'Surface Light (#FFFDF5)', textToken: 'Text Dark (#000000)', usage: 'Section latar krem/putih terang berborder hitam' },
+        { backgroundToken: 'Surface Accent Yellow (#FFDE59)', textToken: 'Text Dark (#000000)', usage: 'Section/card aksen kuning solid' },
+        { backgroundToken: 'Surface Dark (#000000)', textToken: 'Text Light (#FFFFFF)', usage: 'Section CTA/footer hitam pekat' },
+      ],
     },
     referenceExamples: [
       { name: 'Gumroad', url: 'https://gumroad.com', note: 'Border tebal, warna solid kontras tinggi, tanpa shadow lembut.' },
@@ -87,6 +140,21 @@ export const DESIGN_THEMES: DesignThemeRule[] = [
       forbidden: [
         'DILARANG grid kotak berukuran seragam semua (harus ada variasi ukuran agar terasa "bento")',
         'DILARANG mengabaikan reflow ke single-column rapi di mobile',
+      ],
+      typographyScale: {
+        h1: { desktop: '48px, bold', tablet: '38px, bold', mobile: '30px, bold' },
+        h2: { desktop: '36px, bold', tablet: '30px, bold', mobile: '24px, bold' },
+        h3: { desktop: '26px, semibold', tablet: '22px, semibold', mobile: '20px, semibold' },
+        h4: { desktop: '20px, semibold', tablet: '19px, semibold', mobile: '18px, semibold' },
+        bodyLarge: { desktop: '18px, regular', tablet: '17px, regular', mobile: '16px, regular' },
+        body: { desktop: '16px, regular', tablet: '15px, regular', mobile: '15px, regular' },
+        bodySmall: { desktop: '14px, regular', tablet: '14px, regular', mobile: '13px, regular' },
+        caption: { desktop: '12px, medium', tablet: '12px, medium', mobile: '12px, medium' },
+      },
+      colorContrastPairs: [
+        { backgroundToken: 'Surface Light (#FFFFFF)', textToken: 'Text Dark (#09090B)', usage: 'Kartu & section latar putih' },
+        { backgroundToken: 'Surface Subtly Gray (#F4F4F5)', textToken: 'Text Dark (#09090B)', usage: 'Section/kartu bento kontras lembut' },
+        { backgroundToken: 'Surface Accent Blue/Dark (#18181B)', textToken: 'Text Light (#FAFAFA)', usage: 'Kartu bento focal point / footer' },
       ],
     },
     referenceExamples: [
@@ -112,6 +180,21 @@ export const DESIGN_THEMES: DesignThemeRule[] = [
         'DILARANG layout kotak-kotak/card grid seperti bento',
         'DILARANG warna cerah/saturasi tinggi lebih dari 1 aksen',
       ],
+      typographyScale: {
+        h1: { desktop: '56px, serif bold', tablet: '42px, serif bold', mobile: '32px, serif bold' },
+        h2: { desktop: '40px, serif bold', tablet: '32px, serif bold', mobile: '26px, serif bold' },
+        h3: { desktop: '30px, serif semibold', tablet: '25px, serif semibold', mobile: '22px, serif semibold' },
+        h4: { desktop: '22px, semibold', tablet: '20px, semibold', mobile: '18px, semibold' },
+        bodyLarge: { desktop: '20px, regular', tablet: '18px, regular', mobile: '16px, regular' },
+        body: { desktop: '17px, regular', tablet: '16px, regular', mobile: '15px, regular' },
+        bodySmall: { desktop: '14px, regular', tablet: '14px, regular', mobile: '13px, regular' },
+        caption: { desktop: '12px, medium', tablet: '12px, medium', mobile: '12px, medium' },
+      },
+      colorContrastPairs: [
+        { backgroundToken: 'Surface Cream/Warm Light (#FAFAFA)', textToken: 'Text Charcoal (#1C1917)', usage: 'Latar baca majalah terang' },
+        { backgroundToken: 'Surface Soft Beige (#F5F5F4)', textToken: 'Text Charcoal (#1C1917)', usage: 'Latar artikel/quote terpisah' },
+        { backgroundToken: 'Surface Dark Espresso (#1C1917)', textToken: 'Text Warm Cream (#FAFAFA)', usage: 'Section penutup/footer majalah' },
+      ],
     },
     referenceExamples: [
       { name: 'Aesop', url: 'https://aesop.com', note: 'Tipografi serif besar sebagai elemen utama, foto editorial full-width.' },
@@ -134,6 +217,21 @@ export const DESIGN_THEMES: DesignThemeRule[] = [
       forbidden: [
         'DILARANG grid kotak tegas/simetris sempurna ala korporat',
         'DILARANG palet warna monokrom/dingin',
+      ],
+      typographyScale: {
+        h1: { desktop: '46px, rounded bold', tablet: '36px, rounded bold', mobile: '30px, rounded bold' },
+        h2: { desktop: '34px, rounded bold', tablet: '28px, rounded bold', mobile: '24px, rounded bold' },
+        h3: { desktop: '26px, rounded semibold', tablet: '22px, rounded semibold', mobile: '20px, rounded semibold' },
+        h4: { desktop: '20px, rounded semibold', tablet: '18px, rounded semibold', mobile: '17px, rounded semibold' },
+        bodyLarge: { desktop: '18px, regular', tablet: '17px, regular', mobile: '16px, regular' },
+        body: { desktop: '16px, regular', tablet: '16px, regular', mobile: '15px, regular' },
+        bodySmall: { desktop: '14px, medium', tablet: '14px, medium', mobile: '13px, medium' },
+        caption: { desktop: '12px, bold', tablet: '12px, bold', mobile: '12px, bold' },
+      },
+      colorContrastPairs: [
+        { backgroundToken: 'Surface Organic Light (#FFFBEB)', textToken: 'Text Warm Dark (#292524)', usage: 'Latar hangat ceria' },
+        { backgroundToken: 'Surface Soft Peach (#FFEDD5)', textToken: 'Text Warm Dark (#292524)', usage: 'Card/blob latar hangat' },
+        { backgroundToken: 'Surface Dark Organic (#292524)', textToken: 'Text Light (#FFFBEB)', usage: 'Section footer/CTA hangat gelap' },
       ],
     },
     referenceExamples: [
@@ -158,6 +256,21 @@ export const DESIGN_THEMES: DesignThemeRule[] = [
       forbidden: [
         'DILARANG latar putih/terang di section utama',
         'DILARANG warna aksen cerah/pastel — hanya metalik atau jewel-tone gelap',
+      ],
+      typographyScale: {
+        h1: { desktop: '52px, thin/light tracking-wide', tablet: '40px, light', mobile: '32px, light' },
+        h2: { desktop: '38px, light tracking-wide', tablet: '30px, light', mobile: '24px, light' },
+        h3: { desktop: '28px, regular', tablet: '24px, regular', mobile: '20px, regular' },
+        h4: { desktop: '22px, regular', tablet: '20px, regular', mobile: '18px, regular' },
+        bodyLarge: { desktop: '18px, light', tablet: '17px, light', mobile: '16px, light' },
+        body: { desktop: '16px, light', tablet: '15px, light', mobile: '15px, light' },
+        bodySmall: { desktop: '14px, regular', tablet: '14px, regular', mobile: '13px, regular' },
+        caption: { desktop: '12px, tracking-widest medium', tablet: '12px, medium', mobile: '12px, medium' },
+      },
+      colorContrastPairs: [
+        { backgroundToken: 'Surface Dark Obsidian (#0B0F17)', textToken: 'Text Metallic Light (#F1F5F9)', usage: 'Canvas utama dark luxury' },
+        { backgroundToken: 'Surface Elevated Dark (#1E293B)', textToken: 'Text Light (#F8FAFC)', usage: 'Kartu & section terangkat' },
+        { backgroundToken: 'Surface Accent Gold (#D97706)', textToken: 'Text Dark Obsidian (#0B0F17)', usage: 'Highlight/CTA aksen emas' },
       ],
     },
     referenceExamples: [
