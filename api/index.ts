@@ -235,6 +235,7 @@ const verifyKeyWithGoogle = async (
   }
 };
 
+// ================== Prompt Injection Guard & Input Length Limit ==================
 const SUSPICIOUS_PATTERNS = [
   'ignore previous instructions',
   'ignore all previous',
@@ -248,11 +249,14 @@ const SUSPICIOUS_PATTERNS = [
   'override system instructions',
 ];
 
-function isSuspiciousPromptInjection(text: string): boolean {
+function isSuspiciousPromptInjection(text?: string): boolean {
   if (!text) return false;
   const lower = text.toLowerCase();
   return SUSPICIOUS_PATTERNS.some((pattern) => lower.includes(pattern));
 }
+
+const MAX_BRIEF_LENGTH = 10000; // karakter, untuk rawBrief / referenceInformation
+const MAX_EXTRA_INSTRUCTION_LENGTH = 3000; // karakter, untuk specialRequirements / extraInstruction
 
 // API: Validate visitor Gemini API keys
 app.post('/api/validate-keys', async (req, res) => {
@@ -284,17 +288,21 @@ app.post('/api/validate-keys', async (req, res) => {
 // API: Analyze Brief (Auto Mode)
 app.post('/api/analyze-brief', async (req, res) => {
   try {
-    const { rawBrief } = req.body;
-    if (!rawBrief || typeof rawBrief !== 'string') {
+    const rawBriefVal = req.body.rawBrief || (req.body.form?.referenceInformation) || (req.body.referenceInformation) || (req.body.form?.rawBrief);
+    if (!rawBriefVal || typeof rawBriefVal !== 'string') {
       return res.status(400).json({ error: 'Brief mentah wajib diisi.' });
     }
 
-    if (rawBrief.length > 10000) {
-      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 10000 karakter). Mohon persingkat brief Anda.' });
+    if (rawBriefVal.length > MAX_BRIEF_LENGTH) {
+      return res.status(400).json({
+        error: `Brief mentah terlalu panjang (maksimal ${MAX_BRIEF_LENGTH} karakter). Mohon persingkat brief Anda.`,
+      });
     }
 
-    if (isSuspiciousPromptInjection(rawBrief)) {
-      return res.status(400).json({ error: 'Brief mentah terdeteksi mengandung instruksi ilegal atau manipulasi prompt. Mohon masukkan deskripsi bisnis yang valid.' });
+    if (isSuspiciousPromptInjection(rawBriefVal)) {
+      return res.status(400).json({
+        error: 'Brief mentah terdeteksi mengandung instruksi ilegal atau manipulasi prompt. Mohon masukkan deskripsi bisnis yang valid.',
+      });
     }
 
     const candidateKeys = getAllCandidateKeys(req);
@@ -305,7 +313,7 @@ app.post('/api/analyze-brief', async (req, res) => {
     }
 
     const candidateModels = getModelFallbackChain();
-    const prompt = buildAnalysisPrompt(rawBrief);
+    const prompt = buildAnalysisPrompt(rawBriefVal);
     let jsonText = '';
     let modelUsed = GEMINI_MODEL;
     let lastError: any = null;
@@ -401,9 +409,10 @@ app.post('/api/analyze-brief', async (req, res) => {
 // API: Generate PRD
 app.post('/api/generate-prd', async (req, res) => {
   try {
-    const formState: ProjectFormState = req.body;
+    const formState: ProjectFormState = req.body.form || req.body;
 
     if (!formState) {
+      console.error('[CANVAS-PRD-AI] [ERROR] Payload form kosong atau tidak valid.');
       return res.status(400).json({ error: 'Data form PRD tidak ditemukan.' });
     }
 
@@ -411,12 +420,28 @@ app.post('/api/generate-prd', async (req, res) => {
       return res.status(400).json({ error: 'Jumlah halaman melebihi batas maksimum (maksimal 20 halaman).' });
     }
 
-    if (formState.rawBrief && formState.rawBrief.length > 10000) {
-      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 10000 karakter).' });
+    const rawBriefVal = formState.rawBrief || (req.body.form?.referenceInformation) || (req.body.referenceInformation) || '';
+    const extraVal = formState.specialRequirements || (req.body.form?.extraInstruction) || (req.body.extraInstruction) || '';
+
+    if (rawBriefVal && rawBriefVal.length > MAX_BRIEF_LENGTH) {
+      console.warn('[CANVAS-PRD-AI] [VALIDATION] Brief mentah melebihi batas panjang.');
+      return res.status(400).json({
+        error: `Brief mentah terlalu panjang (maksimal ${MAX_BRIEF_LENGTH} karakter). Mohon persingkat brief Anda.`,
+      });
     }
 
-    if (formState.rawBrief && isSuspiciousPromptInjection(formState.rawBrief)) {
-      return res.status(400).json({ error: 'Brief mentah terdeteksi mengandung instruksi ilegal atau manipulasi prompt. Mohon masukkan deskripsi bisnis yang valid.' });
+    if (extraVal && extraVal.length > MAX_EXTRA_INSTRUCTION_LENGTH) {
+      console.warn('[CANVAS-PRD-AI] [VALIDATION] Extra instruction melebihi batas panjang.');
+      return res.status(400).json({
+        error: `Instruksi tambahan terlalu panjang (maksimal ${MAX_EXTRA_INSTRUCTION_LENGTH} karakter).`,
+      });
+    }
+
+    if (isSuspiciousPromptInjection(rawBriefVal) || isSuspiciousPromptInjection(extraVal)) {
+      console.warn('[CANVAS-PRD-AI] [VALIDATION] Terdeteksi indikasi prompt-injection pada input user.');
+      return res.status(400).json({
+        error: 'Input Anda terdeteksi mengandung instruksi ilegal atau upaya manipulasi prompt. Mohon masukkan deskripsi bisnis yang valid.',
+      });
     }
 
     const candidateKeys = getAllCandidateKeys(req);
