@@ -1,116 +1,26 @@
 import express from 'express';
 import path from 'path';
-import { GoogleGenAI, Type } from '@google/genai';
+import { Type } from '@google/genai';
 import { buildSystemPrompt, buildUserPrompt, buildAnalysisPrompt } from '../src/prompts/promptTemplates.js';
 import { ProjectFormState, PRDGenerateResponse, BriefAnalysisResponse } from '../src/types.js';
-import { GEMINI_MODEL, getModelFallbackChain } from '../src/config/aiModel.js';
+import { getModelFallbackChain } from '../src/config/aiModel.js';
+import { getVisitorKeysFromRequest } from '../src/services/gemini/visitorKeyParser.js';
+import { runGeminiWithVisitorKeys } from '../src/services/gemini/geminiRequestRunner.js';
 
-// Vercel serverless function timeout
-export const maxDuration = 60;
+// Vercel serverless function timeout (set to 300 seconds as required)
+export const maxDuration = 300;
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
-
-// Helper: pisah string multi-baris atau koma jadi array key bersih
-const splitKeysByLine = (raw: string): string[] =>
-  raw
-    .split(/[\n,]+/)
-    .map((k) => k.replace(/\r/g, '').trim())
-    .filter(Boolean);
-
-const getServerKeys = (): string[] => {
-  const keys: string[] = [];
-  if (process.env.GEMINI_API_KEY) {
-    const split = splitKeysByLine(process.env.GEMINI_API_KEY);
-    split.forEach((k) => {
-      if (!keys.includes(k)) keys.push(k);
-    });
-  }
-  Object.keys(process.env).forEach((envKey) => {
-    if (envKey.startsWith('GEMINI_API_KEY_') && !envKey.includes('BACKUP')) {
-      const val = process.env[envKey];
-      if (val) {
-        const split = splitKeysByLine(val);
-        split.forEach((k) => {
-          if (!keys.includes(k)) keys.push(k);
-        });
-      }
-    }
-  });
-  return keys;
-};
-
-const getBackupKeys = (): string[] => {
-  const keys: string[] = [];
-  Object.keys(process.env).forEach((envKey) => {
-    if (
-      envKey.includes('BACKUP') ||
-      envKey === 'GEMINI_BACKUP_KEY' ||
-      envKey === 'GEMINI_BACKUP_KEYS'
-    ) {
-      const val = process.env[envKey];
-      if (val) {
-        const split = splitKeysByLine(val);
-        split.forEach((k) => {
-          if (!keys.includes(k)) keys.push(k);
-        });
-      }
-    }
-  });
-  return keys;
-};
-
-// Helper to parse visitor API keys from headers
-const getVisitorKeys = (req: express.Request): string[] => {
-  const headerKeys = req.headers['x-user-api-keys'] as string | undefined;
-  const legacyHeader = req.headers['x-user-api-key'] as string | undefined;
-
-  let parsed: string[] = [];
-  if (headerKeys) {
-    try {
-      const json = JSON.parse(headerKeys);
-      if (Array.isArray(json)) {
-        parsed = json.map((k) => (typeof k === 'string' ? k.trim() : '')).filter(Boolean);
-      }
-    } catch {
-      if (typeof headerKeys === 'string') {
-        parsed = headerKeys.split(/[\n,]+/).map((k) => k.trim()).filter(Boolean);
-      }
-    }
-  }
-
-  if (parsed.length === 0 && legacyHeader) {
-    parsed = legacyHeader.split(/[\n,]+/).map((k) => k.trim()).filter(Boolean);
-  }
-
-  return parsed;
-};
-
-// Get ordered unique list of all candidate keys (Visitor -> Server -> Backup)
-const getAllCandidateKeys = (req: express.Request): string[] => {
-  const visitor = getVisitorKeys(req);
-  const server = getServerKeys();
-  const backup = getBackupKeys();
-
-  const combined = [...visitor, ...server, ...backup];
-  return Array.from(new Set(combined.filter(Boolean)));
-};
 
 // API Health Check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Server & Key Status Check
+// API Status Check
 app.get('/api/status', (req, res) => {
-  const serverKeys = getServerKeys();
-  const backupKeys = getBackupKeys();
-  res.json({
-    status: 'ok',
-    hasSystemApiKey: serverKeys.length > 0 || backupKeys.length > 0,
-    serverKeyCount: serverKeys.length,
-    backupKeyCount: backupKeys.length,
-  });
+  res.json({ status: 'ok' });
 });
 
 // Password Lock Configuration
@@ -235,29 +145,6 @@ const verifyKeyWithGoogle = async (
   }
 };
 
-// ================== Prompt Injection Guard & Input Length Limit ==================
-const SUSPICIOUS_PATTERNS = [
-  'ignore previous instructions',
-  'ignore all previous',
-  'disregard previous instructions',
-  'abaikan instruksi sebelumnya',
-  'abaikan semua instruksi',
-  'reveal system prompt',
-  'show system prompt',
-  'reveal your instructions',
-  'system prompt:',
-  'override system instructions',
-];
-
-function isSuspiciousPromptInjection(text?: string): boolean {
-  if (!text) return false;
-  const lower = text.toLowerCase();
-  return SUSPICIOUS_PATTERNS.some((pattern) => lower.includes(pattern));
-}
-
-const MAX_BRIEF_LENGTH = 10000; // karakter, untuk rawBrief / referenceInformation
-const MAX_EXTRA_INSTRUCTION_LENGTH = 3000; // karakter, untuk specialRequirements / extraInstruction
-
 // API: Validate visitor Gemini API keys
 app.post('/api/validate-keys', async (req, res) => {
   try {
@@ -288,120 +175,89 @@ app.post('/api/validate-keys', async (req, res) => {
 // API: Analyze Brief (Auto Mode)
 app.post('/api/analyze-brief', async (req, res) => {
   try {
-    const rawBriefVal = req.body.rawBrief || (req.body.form?.referenceInformation) || (req.body.referenceInformation) || (req.body.form?.rawBrief);
-    if (!rawBriefVal || typeof rawBriefVal !== 'string') {
+    const { rawBrief } = req.body;
+    if (!rawBrief || typeof rawBrief !== 'string') {
       return res.status(400).json({ error: 'Brief mentah wajib diisi.' });
     }
 
-    if (rawBriefVal.length > MAX_BRIEF_LENGTH) {
-      return res.status(400).json({
-        error: `Brief mentah terlalu panjang (maksimal ${MAX_BRIEF_LENGTH} karakter). Mohon persingkat brief Anda.`,
-      });
+    if (rawBrief.length > 10000) {
+      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 10000 karakter). Mohon persingkat brief Anda.' });
     }
 
-    if (isSuspiciousPromptInjection(rawBriefVal)) {
-      return res.status(400).json({
-        error: 'Brief mentah terdeteksi mengandung instruksi ilegal atau manipulasi prompt. Mohon masukkan deskripsi bisnis yang valid.',
-      });
-    }
-
-    const candidateKeys = getAllCandidateKeys(req);
-    if (candidateKeys.length === 0) {
+    const visitorKeys = getVisitorKeysFromRequest(req);
+    if (visitorKeys.length === 0) {
       return res.status(400).json({
         error: 'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.',
       });
     }
 
     const candidateModels = getModelFallbackChain();
-    const prompt = buildAnalysisPrompt(rawBriefVal);
-    let jsonText = '';
-    let modelUsed = GEMINI_MODEL;
-    let lastError: any = null;
+    const prompt = buildAnalysisPrompt(rawBrief);
 
-    keyLoop: for (const apiKey of candidateKeys) {
-      for (const modelCandidate of candidateModels) {
-        try {
-          const ai = new GoogleGenAI({
-            apiKey,
-            httpOptions: {
-              headers: {
-                'User-Agent': 'aistudio-build',
-              },
-            },
-          });
-
-          const response = await ai.models.generateContent({
-            model: modelCandidate,
-            contents: prompt,
-            config: {
-              responseMimeType: 'application/json',
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  projectName: { type: Type.STRING, description: 'Nama proyek atau bisnis' },
-                  businessType: { type: Type.STRING, description: 'Bidang usaha atau industri' },
-                  websiteType: {
-                    type: Type.STRING,
-                    description: 'Kategori website (Company Profile, E-Commerce / Catalog, SaaS / Service App, Agency / Portfolio, Educational / Community)',
-                  },
-                  targetAudience: { type: Type.STRING, description: 'Target pengguna / calon klien' },
-                  goalWebsite: { type: Type.STRING, description: 'Tujuan utama website' },
-                  primaryCTA: { type: Type.STRING, description: 'Call to Action utama (misal: WhatsApp)' },
-                  primaryColor: { type: Type.STRING, description: 'Rekomendasi warna utama' },
-                  colorTone: { type: Type.STRING, description: 'Tone warna canvas' },
-                  typographyPairing: { type: Type.STRING, description: 'Pasangan font' },
-                  designThemeId: { type: Type.STRING, description: 'ID Tema Desain terpilih (modern-minimalist, neo-brutalism, bento-grid, editorial-elegant, playful-organic, dark-luxury)' },
-                  contentLanguage: { type: Type.STRING, description: 'Indonesian, English, atau Bilingual' },
-                  specialRequirements: { type: Type.STRING, description: 'Kebutuhan khusus' },
-                  suggestedPages: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        pageName: { type: Type.STRING },
-                        pageSlug: { type: Type.STRING },
-                        pageType: { type: Type.STRING },
-                        pagePurpose: { type: Type.STRING },
-                        keySections: {
-                          type: Type.ARRAY,
-                          items: { type: Type.STRING },
-                        },
-                        isInMainNav: { type: Type.BOOLEAN },
-                        metaTitle: { type: Type.STRING, description: 'Rekomendasi Meta Title SEO (≤60 karakter)' },
-                        metaDescription: { type: Type.STRING, description: 'Rekomendasi Meta Description SEO (120–160 karakter)' },
+    const runnerResult = await runGeminiWithVisitorKeys<string>({
+      keys: visitorKeys,
+      candidateModels,
+      executor: async (ai, apiKey, modelCandidate) => {
+        const response = await ai.models.generateContent({
+          model: modelCandidate,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                projectName: { type: Type.STRING, description: 'Nama proyek atau bisnis' },
+                businessType: { type: Type.STRING, description: 'Bidang usaha atau industri' },
+                websiteType: {
+                  type: Type.STRING,
+                  description: 'Kategori website (Company Profile, E-Commerce / Catalog, SaaS / Service App, Agency / Portfolio, Educational / Community)',
+                },
+                targetAudience: { type: Type.STRING, description: 'Target pengguna / calon klien' },
+                goalWebsite: { type: Type.STRING, description: 'Tujuan utama website' },
+                primaryCTA: { type: Type.STRING, description: 'Call to Action utama (misal: WhatsApp)' },
+                primaryColor: { type: Type.STRING, description: 'Rekomendasi warna utama' },
+                colorTone: { type: Type.STRING, description: 'Tone warna canvas' },
+                typographyPairing: { type: Type.STRING, description: 'Pasangan font' },
+                designThemeId: { type: Type.STRING, description: 'ID Tema Desain terpilih (modern-minimalist, neo-brutalism, bento-grid, editorial-elegant, playful-organic, dark-luxury)' },
+                contentLanguage: { type: Type.STRING, description: 'Indonesian, English, atau Bilingual' },
+                specialRequirements: { type: Type.STRING, description: 'Kebutuhan khusus' },
+                suggestedPages: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      pageName: { type: Type.STRING },
+                      pageSlug: { type: Type.STRING },
+                      pageType: { type: Type.STRING },
+                      pagePurpose: { type: Type.STRING },
+                      keySections: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
                       },
-                      required: ['pageName', 'pageSlug', 'pageType', 'pagePurpose', 'isInMainNav'],
+                      isInMainNav: { type: Type.BOOLEAN },
+                      metaTitle: { type: Type.STRING, description: 'Rekomendasi Meta Title SEO (≤60 karakter)' },
+                      metaDescription: { type: Type.STRING, description: 'Rekomendasi Meta Description SEO (120–160 karakter)' },
                     },
+                    required: ['pageName', 'pageSlug', 'pageType', 'pagePurpose', 'isInMainNav'],
                   },
                 },
               },
             },
-          });
+          },
+        });
+        return response.text || '{}';
+      },
+    });
 
-          jsonText = response.text || '{}';
-          modelUsed = modelCandidate;
-          lastError = null;
-          break keyLoop; // Success
-        } catch (err: any) {
-          lastError = err;
-          console.warn(`Candidate key or model (${modelCandidate}) failed, trying next option...`);
-        }
-      }
-    }
-
-    if (!jsonText && lastError) {
-      throw lastError;
-    }
-
-    const parsed: BriefAnalysisResponse = JSON.parse(jsonText || '{}');
-    parsed.modelUsed = modelUsed;
+    const parsed: BriefAnalysisResponse = JSON.parse(runnerResult.data || '{}');
+    parsed.modelUsed = runnerResult.modelUsed;
 
     return res.json({
       success: true,
       data: parsed,
     });
   } catch (err: any) {
-    console.error('Error analyzing brief:', err);
+    console.error('Error analyzing brief:', err?.message || err);
     return res.status(500).json({ error: err.message || 'Gagal menganalisis brief mentah.' });
   }
 });
@@ -409,10 +265,9 @@ app.post('/api/analyze-brief', async (req, res) => {
 // API: Generate PRD
 app.post('/api/generate-prd', async (req, res) => {
   try {
-    const formState: ProjectFormState = req.body.form || req.body;
+    const formState: ProjectFormState = req.body;
 
     if (!formState) {
-      console.error('[CANVAS-PRD-AI] [ERROR] Payload form kosong atau tidak valid.');
       return res.status(400).json({ error: 'Data form PRD tidak ditemukan.' });
     }
 
@@ -420,32 +275,12 @@ app.post('/api/generate-prd', async (req, res) => {
       return res.status(400).json({ error: 'Jumlah halaman melebihi batas maksimum (maksimal 20 halaman).' });
     }
 
-    const rawBriefVal = formState.rawBrief || (req.body.form?.referenceInformation) || (req.body.referenceInformation) || '';
-    const extraVal = formState.specialRequirements || (req.body.form?.extraInstruction) || (req.body.extraInstruction) || '';
-
-    if (rawBriefVal && rawBriefVal.length > MAX_BRIEF_LENGTH) {
-      console.warn('[CANVAS-PRD-AI] [VALIDATION] Brief mentah melebihi batas panjang.');
-      return res.status(400).json({
-        error: `Brief mentah terlalu panjang (maksimal ${MAX_BRIEF_LENGTH} karakter). Mohon persingkat brief Anda.`,
-      });
+    if (formState.rawBrief && formState.rawBrief.length > 10000) {
+      return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 10000 karakter).' });
     }
 
-    if (extraVal && extraVal.length > MAX_EXTRA_INSTRUCTION_LENGTH) {
-      console.warn('[CANVAS-PRD-AI] [VALIDATION] Extra instruction melebihi batas panjang.');
-      return res.status(400).json({
-        error: `Instruksi tambahan terlalu panjang (maksimal ${MAX_EXTRA_INSTRUCTION_LENGTH} karakter).`,
-      });
-    }
-
-    if (isSuspiciousPromptInjection(rawBriefVal) || isSuspiciousPromptInjection(extraVal)) {
-      console.warn('[CANVAS-PRD-AI] [VALIDATION] Terdeteksi indikasi prompt-injection pada input user.');
-      return res.status(400).json({
-        error: 'Input Anda terdeteksi mengandung instruksi ilegal atau upaya manipulasi prompt. Mohon masukkan deskripsi bisnis yang valid.',
-      });
-    }
-
-    const candidateKeys = getAllCandidateKeys(req);
-    if (candidateKeys.length === 0) {
+    const visitorKeys = getVisitorKeysFromRequest(req);
+    if (visitorKeys.length === 0) {
       return res.status(400).json({
         error: 'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.',
       });
@@ -454,44 +289,23 @@ app.post('/api/generate-prd', async (req, res) => {
     const candidateModels = getModelFallbackChain();
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(formState);
-    let markdownOutput = '';
-    let modelUsed = GEMINI_MODEL;
-    let lastError: any = null;
 
-    keyLoop: for (const apiKey of candidateKeys) {
-      for (const modelCandidate of candidateModels) {
-        try {
-          const ai = new GoogleGenAI({
-            apiKey,
-            httpOptions: {
-              headers: {
-                'User-Agent': 'aistudio-build',
-              },
-            },
-          });
+    const runnerResult = await runGeminiWithVisitorKeys<string>({
+      keys: visitorKeys,
+      candidateModels,
+      executor: async (ai, apiKey, modelCandidate) => {
+        const response = await ai.models.generateContent({
+          model: modelCandidate,
+          contents: userPrompt,
+          config: {
+            systemInstruction: systemPrompt,
+          },
+        });
+        return response.text || '# PRD Generation Failed';
+      },
+    });
 
-          const response = await ai.models.generateContent({
-            model: modelCandidate,
-            contents: userPrompt,
-            config: {
-              systemInstruction: systemPrompt,
-            },
-          });
-
-          markdownOutput = response.text || '# PRD Generation Failed';
-          modelUsed = modelCandidate;
-          lastError = null;
-          break keyLoop; // Success
-        } catch (err: any) {
-          lastError = err;
-          console.warn(`Candidate key or model (${modelCandidate}) failed, trying next option...`);
-        }
-      }
-    }
-
-    if (!markdownOutput && lastError) {
-      throw lastError;
-    }
+    let markdownOutput = runnerResult.data;
 
     // Trim preamble text before first H1 header `# `
     const h1Index = markdownOutput.indexOf('# ');
@@ -555,7 +369,7 @@ app.post('/api/generate-prd', async (req, res) => {
         passed,
         warnings,
       },
-      modelUsed,
+      modelUsed: runnerResult.modelUsed,
     };
 
     return res.json(responseData);

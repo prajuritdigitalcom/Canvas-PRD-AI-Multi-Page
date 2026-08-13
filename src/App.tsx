@@ -93,35 +93,6 @@ export default function App() {
       return [];
     }
   });
-  const [hasSystemApiKey, setHasSystemApiKey] = useState(true);
-  const [serverKeyCount, setServerKeyCount] = useState<number>(0);
-  const [backupKeyCount, setBackupKeyCount] = useState<number>(0);
-  const [apiStatusError, setApiStatusError] = useState<string | null>(null);
-
-  // Check server API key status on mount
-  useEffect(() => {
-    fetch('/api/status')
-      .then((res) => {
-        if (!res.ok) throw new Error('Status endpoint returned non-200');
-        return res.json();
-      })
-      .then((data) => {
-        if (typeof data.hasSystemApiKey === 'boolean') {
-          setHasSystemApiKey(data.hasSystemApiKey);
-        }
-        if (typeof data.serverKeyCount === 'number') {
-          setServerKeyCount(data.serverKeyCount);
-        }
-        if (typeof data.backupKeyCount === 'number') {
-          setBackupKeyCount(data.backupKeyCount);
-        }
-        setApiStatusError(null);
-      })
-      .catch((err) => {
-        console.warn('Gagal terhubung ke endpoint status server:', err);
-        setApiStatusError('Gagal memeriksa status koneksi server');
-      });
-  }, []);
 
   const handleSaveVisitorApiKeys = (keys: string[]) => {
     try {
@@ -418,19 +389,11 @@ export default function App() {
           activeTab={activeTab}
           onSelectTab={(tab) => setActiveTab(tab)}
           savedPRDCount={savedPRDs.length}
-          serverKeyCount={serverKeyCount}
-          backupKeyCount={backupKeyCount}
           visitorKeyCount={visitorApiKeys.length}
         />
 
         {/* Content View Area */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-          {apiStatusError && (
-            <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center justify-between">
-              <span>⚠️ Status koneksi server: {apiStatusError}</span>
-            </div>
-          )}
-
           {activeTab === 'generator' && (
             <div className="space-y-8">
               {/* Hero Banner when no PRD generated yet */}
@@ -497,7 +460,6 @@ export default function App() {
               onSaveVisitorApiKeys={handleSaveVisitorApiKeys}
               onClearVisitorApiKeys={handleClearVisitorApiKeys}
               onRemoveVisitorApiKey={handleRemoveVisitorApiKey}
-              hasSystemApiKey={hasSystemApiKey}
             />
           )}
         </main>

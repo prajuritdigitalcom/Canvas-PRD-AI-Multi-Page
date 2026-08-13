@@ -5,8 +5,6 @@ interface SidebarProps {
   activeTab: 'generator' | 'history' | 'settings';
   onSelectTab: (tab: 'generator' | 'history' | 'settings') => void;
   savedPRDCount: number;
-  serverKeyCount: number;
-  backupKeyCount: number;
   visitorKeyCount: number;
 }
 
@@ -14,8 +12,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
   savedPRDCount,
-  serverKeyCount,
-  backupKeyCount,
   visitorKeyCount,
 }) => {
   const NAV_ITEMS = [
@@ -37,7 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'settings' as const,
       label: 'Sistem & API Key',
       icon: Settings,
-      desc: 'Konfigurasi Gemini Server',
+      desc: 'Pengaturan API Key Gemini',
     },
   ];
 
@@ -95,32 +91,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
         <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
           <KeyRound className="w-4 h-4 text-[#fe4c6f]" />
-          <span>Status API Key Gemini</span>
+          <span>API Key Gemini</span>
         </div>
         <div className="space-y-2 text-xs pt-2 border-t border-slate-200/80">
           <div className="flex items-center justify-between">
-            <span className="text-slate-600 font-medium text-[11px]">Server</span>
-            {serverKeyCount > 0 ? (
+            <span className="text-slate-600 font-medium text-[11px]">Key Aktif</span>
+            {visitorKeyCount > 0 ? (
               <span className="inline-flex items-center gap-1.5 text-emerald-800 font-bold text-[11px] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Aktif ({serverKeyCount})
-              </span>
-            ) : (
-              <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
-                Kosong
-              </span>
-            )}
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-600 font-medium text-[11px]">Pribadi (Anda)</span>
-            {visitorKeyCount > 0 ? (
-              <span className="inline-flex items-center gap-1.5 text-sky-800 font-bold text-[11px] bg-sky-50 px-2.5 py-0.5 rounded-md border border-sky-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
                 Aktif ({visitorKeyCount})
               </span>
             ) : (
               <span className="text-slate-500 font-semibold text-[11px] bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
-                Kosong
+                Belum diatur
               </span>
             )}
           </div>

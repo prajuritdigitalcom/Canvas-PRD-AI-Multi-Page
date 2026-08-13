@@ -6,7 +6,6 @@ interface SettingsViewProps {
   onSaveVisitorApiKeys: (keys: string[]) => void;
   onClearVisitorApiKeys: () => void;
   onRemoveVisitorApiKey: (key: string) => void;
-  hasSystemApiKey?: boolean;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -81,13 +80,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-xs space-y-3">
         <div className="flex items-center gap-2 text-[#fe4c6f] font-bold text-xs uppercase tracking-wider">
           <Settings className="w-4 h-4 text-[#fe4c6f]" />
-          <span>KONFIGURASI SISTEM & API KEYS</span>
+          <span>KONFIGURASI API KEY GEMINI</span>
         </div>
         <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900">
-          Pengaturan Gemini AI & Server Environment
+          Pengaturan API Key Gemini Anda
         </h2>
         <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
-          Kelola API Gemini pribadi sebagai kuota utama atau cadangan.
+          Gunakan API Key Gemini Anda sendiri. Anda dapat memasukkan beberapa key sekaligus untuk mengaktifkan fitur Round Robin, Failover, dan Adaptive Cooldown otomatis.
         </p>
       </div>
 
@@ -96,8 +95,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="space-y-4">
             <div className="border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <KeyRound className="w-4.5 h-4.5 text-amber-500" />
-                <span>API Key Gemini Pribadi (Pengunjung)</span>
+                <KeyRound className="w-4.5 h-4.5 text-[#fe4c6f]" />
+                <span>API Key Gemini Visitor</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Masukkan satu atau beberapa API key Gemini sekaligus (1 key per baris)
@@ -106,7 +105,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div className="space-y-3 text-xs">
               <p className="text-slate-600 leading-relaxed">
-                Tempelkan API Key Gemini milik Anda di bawah ini untuk mengaktifkan kuota pribadi atau cadangan berantai.
+                Tempelkan API Key Gemini milik Anda di bawah ini. Sistem akan melakukan rotasi Round Robin dan otomatis memindahkan request jika salah satu key mencapai rate limit.
               </p>
 
               {/* Textarea Multi-Key Input */}
