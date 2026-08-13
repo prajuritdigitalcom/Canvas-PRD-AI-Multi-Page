@@ -1,5 +1,16 @@
-import { PRDContextState, BusinessStrategyLock, ArchitectureLock, DesignSystemLock, SharedLayoutLock, SEOLock, SEOLockItem } from './types.js';
-import { PageDefinition } from '../../src/types.js';
+import {
+  PRDContextState,
+  BusinessStrategyLock,
+  ArchitectureLock,
+  DesignSystemLock,
+  SharedLayoutLock,
+  SEOLock,
+  SEOLockItem,
+  LockMeta,
+  LockSource,
+  LockQuality,
+} from './types.js';
+import { PageDefinition, ProjectFormState } from '../../src/types.js';
 
 export function extractMarkdownSection(markdown: string, headerPattern: string): string {
   if (!markdown) return '';
@@ -9,26 +20,64 @@ export function extractMarkdownSection(markdown: string, headerPattern: string):
 }
 
 export function parseBusinessChunkToLock(markdown: string): BusinessStrategyLock {
+  const execSummary = extractMarkdownSection(markdown, 'Executive Summary') || extractMarkdownSection(markdown, '1\\.');
+  const positioning = extractMarkdownSection(markdown, 'Brand Positioning') || extractMarkdownSection(markdown, 'Positioning');
+  const valueProp = extractMarkdownSection(markdown, 'Value Proposition');
+  const personas = extractMarkdownSection(markdown, 'Target Audience') || extractMarkdownSection(markdown, 'Personas');
+  const goals = extractMarkdownSection(markdown, 'Objectives') || extractMarkdownSection(markdown, 'Goals');
+  const metrics = extractMarkdownSection(markdown, 'Success Metrics') || extractMarkdownSection(markdown, 'KPI');
+  const competitorAssumptions = extractMarkdownSection(markdown, 'Competitor');
+
+  const issues: string[] = [];
+  if (!execSummary) issues.push('Executive Summary missing');
+  if (!positioning) issues.push('Brand Positioning missing');
+  if (!valueProp) issues.push('Value Proposition missing');
+
+  const quality: LockQuality = issues.length === 0 ? 'VALID' : issues.length <= 2 ? 'WARNING' : 'INVALID';
+
   return {
-    executiveSummary: extractMarkdownSection(markdown, 'Executive Summary') || extractMarkdownSection(markdown, '1\\.'),
-    positioning: extractMarkdownSection(markdown, 'Brand Positioning') || extractMarkdownSection(markdown, 'Positioning'),
-    valueProposition: extractMarkdownSection(markdown, 'Value Proposition'),
-    personas: extractMarkdownSection(markdown, 'Target Audience') || extractMarkdownSection(markdown, 'Personas'),
-    goals: extractMarkdownSection(markdown, 'Objectives') || extractMarkdownSection(markdown, 'Goals'),
-    metrics: extractMarkdownSection(markdown, 'Success Metrics') || extractMarkdownSection(markdown, 'KPI'),
-    competitorAssumptions: extractMarkdownSection(markdown, 'Competitor'),
+    executiveSummary: execSummary,
+    positioning,
+    valueProposition: valueProp,
+    personas,
+    goals,
+    metrics,
+    competitorAssumptions,
     rawMarkdown: markdown,
+    meta: {
+      source: 'AI_LOCK',
+      quality,
+      required: true,
+      validationIssues: issues,
+    },
   };
 }
 
 export function parseArchitectureChunkToLock(markdown: string, pages: PageDefinition[]): ArchitectureLock {
+  const sitemap = extractMarkdownSection(markdown, 'Sitemap') || extractMarkdownSection(markdown, 'Navigation Structure');
+  const navigation = extractMarkdownSection(markdown, 'Navigation');
+  const userFlow = extractMarkdownSection(markdown, 'User Flow') || extractMarkdownSection(markdown, 'Information Architecture');
+  const responsiveStrategy = extractMarkdownSection(markdown, 'Responsive Strategy');
+
+  const issues: string[] = [];
+  if (!sitemap) issues.push('Sitemap missing');
+  if (!userFlow) issues.push('User flow missing');
+
+  const quality: LockQuality = issues.length === 0 ? 'VALID' : 'WARNING';
+
   return {
-    sitemap: extractMarkdownSection(markdown, 'Sitemap') || extractMarkdownSection(markdown, 'Navigation Structure'),
-    navigation: extractMarkdownSection(markdown, 'Navigation'),
-    userFlow: extractMarkdownSection(markdown, 'User Flow') || extractMarkdownSection(markdown, 'Information Architecture'),
-    responsiveStrategy: extractMarkdownSection(markdown, 'Responsive Strategy'),
-    pages: pages,
+    sitemap,
+    navigation,
+    userFlow,
+    responsiveStrategy,
+    pages,
     rawMarkdown: markdown,
+    meta: {
+      source: 'AI_LOCK',
+      quality,
+      required: true,
+      validationIssues: issues,
+    },
   };
 }
 
@@ -47,40 +96,148 @@ export function parseDesignChunkToLock(markdown: string, theme: any): DesignSyst
     typographyScale: theme?.rules?.typographyScale || {},
     colorContrastPairs: theme?.rules?.colorContrastPairs || [],
     rawMarkdown: markdown,
+    meta: {
+      source: 'USER_LOCK',
+      quality: 'VALID',
+      required: true,
+      validationIssues: [],
+    },
   };
 }
 
-export function parseSharedLayoutChunkToLock(markdown: string): SharedLayoutLock {
+export function parseSharedLayoutChunkToLock(
+  markdown: string,
+  formState?: ProjectFormState
+): SharedLayoutLock {
+  // USER EXPLICIT INPUT is HIGHEST AUTHORITY
+  let navbarStyle = formState?.sharedLayout?.navbarStyle || 'Standard';
+  let footerColumns = formState?.sharedLayout?.footerColumns ?? 4;
+  let hasWhatsAppFloatButton = formState?.sharedLayout?.hasWhatsAppFloatButton ?? true;
+  let hasStickyCTABar = formState?.sharedLayout?.hasStickyCTABar ?? true;
+  let hasNewsletterForm = formState?.sharedLayout?.hasNewsletterForm ?? true;
+  let source: LockSource = formState?.sharedLayout ? 'USER_LOCK' : 'AI_LOCK';
+
+  // Check machine-readable marker in AI output
+  const startMarker = '<!-- SHARED_LAYOUT_LOCK_START -->';
+  const endMarker = '<!-- SHARED_LAYOUT_LOCK_END -->';
+
+  let sharedContract = extractMarkdownSection(markdown, 'Reusable Component Contract') || extractMarkdownSection(markdown, 'Shared Component Contract');
+
+  if (markdown.includes(startMarker) && markdown.includes(endMarker)) {
+    const block = markdown.split(startMarker)[1].split(endMarker)[0];
+    
+    // Parse AI marker recommendations ONLY if user didn't explicitly override
+    if (!formState?.sharedLayout) {
+      const navMatch = block.match(/NAVBAR_STYLE:\s*(.+)/i);
+      if (navMatch) navbarStyle = navMatch[1].trim() as any;
+
+      const colMatch = block.match(/FOOTER_COLUMNS:\s*(\d+)/i);
+      if (colMatch) footerColumns = parseInt(colMatch[1], 10);
+
+      const waMatch = block.match(/WHATSAPP_FLOAT:\s*(ON|OFF|true|false)/i);
+      if (waMatch) hasWhatsAppFloatButton = /ON|true/i.test(waMatch[1]);
+
+      const ctaMatch = block.match(/STICKY_CTA:\s*(ON|OFF|true|false)/i);
+      if (ctaMatch) hasStickyCTABar = /ON|true/i.test(ctaMatch[1]);
+
+      const newsMatch = block.match(/NEWSLETTER:\s*(ON|OFF|true|false)/i);
+      if (newsMatch) hasNewsletterForm = /ON|true/i.test(newsMatch[1]);
+    }
+
+    const contractMatch = block.match(/SHARED_COMPONENTS_CONTRACT:\s*([\s\S]+)/i);
+    if (contractMatch) {
+      sharedContract = contractMatch[1].trim();
+    }
+  }
+
   return {
-    navbarStyle: extractMarkdownSection(markdown, 'Shared Header') || 'Standard',
-    footerColumns: 4,
-    hasWhatsAppFloatButton: true,
-    hasStickyCTABar: true,
-    hasNewsletterForm: true,
-    sharedComponentsContract: extractMarkdownSection(markdown, 'Reusable Component Contract') || extractMarkdownSection(markdown, 'Shared Component Contract'),
+    navbarStyle,
+    footerColumns,
+    hasWhatsAppFloatButton,
+    hasStickyCTABar,
+    hasNewsletterForm,
+    sharedComponentsContract: sharedContract || 'Shared components contract locked.',
     rawMarkdown: markdown,
+    meta: {
+      source,
+      quality: 'VALID',
+      required: true,
+      validationIssues: [],
+    },
   };
 }
 
 export function parseSEOStrategyToLock(markdown: string, pages: PageDefinition[]): SEOLock {
   const seoItems: Record<string, SEOLockItem> = {};
+  const issues: string[] = [];
+  let foundAIMarkersCount = 0;
 
   pages.forEach((page) => {
-    // Look for meta title & description for this page in markdown
-    const pageRegex = new RegExp(`(?:${page.pageName}|${page.pageSlug})[\\s\\S]*?Meta Title:\\s*(.+?)\\n[\\s\\S]*?Meta Description:\\s*(.+?)(?=\\n|$)`, 'i');
-    const match = markdown.match(pageRegex);
+    let metaTitle = '';
+    let metaDescription = '';
+    let searchIntent = page.pagePurpose;
+
+    // 1. Primary Strategy: Machine readable marker <!-- SEO_LOCK_START: pageId -->
+    const startMarker = `<!-- SEO_LOCK_START: ${page.id} -->`;
+    const endMarker = `<!-- SEO_LOCK_END: ${page.id} -->`;
+
+    if (markdown.includes(startMarker) && markdown.includes(endMarker)) {
+      const block = markdown.split(startMarker)[1].split(endMarker)[0];
+      foundAIMarkersCount++;
+
+      const titleMatch = block.match(/META_TITLE:\s*(.+)/i);
+      if (titleMatch) metaTitle = titleMatch[1].trim();
+
+      const descMatch = block.match(/META_DESCRIPTION:\s*(.+)/i);
+      if (descMatch) metaDescription = descMatch[1].trim();
+
+      const intentMatch = block.match(/SEARCH_INTENT:\s*(.+)/i);
+      if (intentMatch) searchIntent = intentMatch[1].trim();
+    }
+
+    // 2. Fallback Strategy: Regex matching
+    if (!metaTitle) {
+      const escapedName = page.pageName.replace(/[^a-zA-Z0-9]/g, '.*');
+      const escapedSlug = page.pageSlug.replace(/[^a-zA-Z0-9]/g, '.*');
+      const pageRegex = new RegExp(`(?:${escapedName}|${escapedSlug}|${page.id})[\\s\\S]*?Meta Title:\\s*(.+?)\\n[\\s\\S]*?Meta Description:\\s*(.+?)(?=\\n|$)`, 'i');
+      const match = markdown.match(pageRegex);
+      if (match) {
+        metaTitle = match[1].trim();
+        metaDescription = match[2].trim();
+      }
+    }
+
+    // 3. Fallback to PageDefinition defaults if parsing failed
+    if (!metaTitle) {
+      metaTitle = page.metaTitle || `${page.pageName} - ${page.pageSlug}`;
+      issues.push(`SEO Title fallback used for ${page.pageName}`);
+    }
+    if (!metaDescription) {
+      metaDescription = page.metaDescription || `Halaman ${page.pageName}`;
+      issues.push(`SEO Description fallback used for ${page.pageName}`);
+    }
 
     seoItems[page.id] = {
       slug: page.pageSlug,
       pageName: page.pageName,
-      metaTitle: match ? match[1].trim() : page.metaTitle || `${page.pageName} - ${page.pageSlug}`,
-      metaDescription: match ? match[2].trim() : page.metaDescription || `Halaman ${page.pageName}`,
+      metaTitle,
+      metaDescription,
+      searchIntent,
     };
   });
+
+  const source: LockSource = foundAIMarkersCount === pages.length ? 'AI_LOCK' : 'FALLBACK';
+  const quality: LockQuality = issues.length === 0 ? 'VALID' : 'WARNING';
 
   return {
     globalRules: extractMarkdownSection(markdown, 'Global Rules') || 'Gunakan Meta Title ≤60 karakter & Meta Description 120-160 karakter.',
     pages: seoItems,
+    meta: {
+      source,
+      quality,
+      required: true,
+      validationIssues: issues,
+    },
   };
 }
 

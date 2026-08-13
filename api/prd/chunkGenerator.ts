@@ -25,7 +25,9 @@ import { calculatePRDQualityScore } from './qualityScorer.js';
 import {
   validateMarkdownIntegrity,
   validatePageCompleteness,
+  validateFoundationChunk,
   extractPagesFromChunkMarkdown,
+  parseCrossPageQAChunkToLock,
 } from './validators.js';
 import { getModelFallbackChain } from '../../src/config/aiModel.js';
 import { runGeminiWithVisitorKeys } from '../../src/services/gemini/geminiRequestRunner.js';
@@ -169,7 +171,7 @@ export async function generateMultiPagePRDPipeline(
   const userPrompt4 = buildFoundationChunkUserPrompt(PRD_CHUNK_KEYS.CHUNK_4_SHARED_LAYOUT, formState, contextState);
   const out4 = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_4_SHARED_LAYOUT, sysPrompt4, userPrompt4);
   saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_4_SHARED_LAYOUT, 4, out4);
-  contextState.sharedLayout = parseSharedLayoutChunkToLock(out4);
+  contextState.sharedLayout = parseSharedLayoutChunkToLock(out4, formState);
   contextState.completedStages.push('Shared Layout Lock');
 
   // STAGE 5: SEO STRATEGY PASS
@@ -227,20 +229,7 @@ PLEASE REPAIR ONLY THE MISSING/INCOMPLETE SECTIONS AND RETURN THE COMPLETE CORRE
   const qaUserPrompt = buildCrossPageQAUserPrompt(contextState);
   const qaOutput = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_CROSS_PAGE_QA, qaSysPrompt, qaUserPrompt);
   saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_CROSS_PAGE_QA, 8, qaOutput);
-  contextState.crossPageQA = {
-    navigationConsistency: 'Verified',
-    terminologyConsistency: 'Verified',
-    CTAConsistency: 'Verified',
-    designTokenConsistency: 'Verified',
-    internalLinkConsistency: 'Verified',
-    sectionDuplicationCheck: 'Passed',
-    pageRoleSeparation: 'Passed',
-    seoConsistency: 'Verified',
-    responsiveConsistency: 'Verified',
-    findings: [],
-    requiredRepairs: [],
-    rawMarkdown: qaOutput,
-  };
+  contextState.crossPageQA = parseCrossPageQAChunkToLock(qaOutput);
   contextState.completedStages.push('Cross-Page QA Lock');
 
   // STAGE 9: MASTER PROMPT CHUNK (SECTION 15)

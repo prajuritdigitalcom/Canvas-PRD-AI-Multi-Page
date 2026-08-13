@@ -1,5 +1,15 @@
 import { PageDefinition, ProjectFormState, SharedLayoutConfig } from '../../src/types.js';
 
+export type LockSource = 'USER_LOCK' | 'AI_LOCK' | 'FALLBACK';
+export type LockQuality = 'VALID' | 'WARNING' | 'INVALID';
+
+export interface LockMeta {
+  source: LockSource;
+  quality: LockQuality;
+  required: boolean;
+  validationIssues: string[];
+}
+
 export interface ProjectInfoContext {
   projectName: string;
   businessType: string;
@@ -23,6 +33,7 @@ export interface BusinessStrategyLock {
   metrics: string;
   competitorAssumptions: string;
   rawMarkdown: string;
+  meta?: LockMeta;
 }
 
 export interface ArchitectureLock {
@@ -32,6 +43,7 @@ export interface ArchitectureLock {
   responsiveStrategy: string;
   pages: PageDefinition[];
   rawMarkdown: string;
+  meta?: LockMeta;
 }
 
 export interface DesignSystemLock {
@@ -48,6 +60,7 @@ export interface DesignSystemLock {
   typographyScale: Record<string, { desktop: string; tablet: string; mobile: string }>;
   colorContrastPairs: Array<{ backgroundToken: string; textToken: string; usage: string }>;
   rawMarkdown: string;
+  meta?: LockMeta;
 }
 
 export interface SharedLayoutLock {
@@ -58,6 +71,7 @@ export interface SharedLayoutLock {
   hasNewsletterForm: boolean;
   sharedComponentsContract: string;
   rawMarkdown: string;
+  meta?: LockMeta;
 }
 
 export interface SEOLockItem {
@@ -71,6 +85,7 @@ export interface SEOLockItem {
 export interface SEOLock {
   globalRules: string;
   pages: Record<string, SEOLockItem>;
+  meta?: LockMeta;
 }
 
 export interface TechnicalLock {

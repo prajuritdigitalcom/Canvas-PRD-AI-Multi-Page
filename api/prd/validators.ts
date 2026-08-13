@@ -1,4 +1,4 @@
-import { ValidationIssue, ValidationResult, PRDContextState, GeneratedPageLock } from './types.js';
+import { ValidationIssue, ValidationResult, PRDContextState, GeneratedPageLock, CrossPageQALock } from './types.js';
 import { PageDefinition } from '../../src/types.js';
 import { calculatePageComplexity } from './pageChunkPlanner.js';
 
@@ -11,6 +11,7 @@ export function extractPagesFromChunkMarkdown(
   for (const page of batchPages) {
     const pageId = page.id;
     let pageMarkdown = '';
+    let extractionFailed = false;
 
     // 1. Primary Strategy: Marker Extraction <!-- PAGE_START: pageId -->
     const startMarker = `<!-- PAGE_START: ${pageId} -->`;
@@ -34,18 +35,21 @@ export function extractPagesFromChunkMarkdown(
       }
     }
 
-    // If still empty, construct minimal fallback section from entire chunk
+    // CRITICAL (P0.3): NEVER assign full batch markdown to a single page when extraction fails!
     if (!pageMarkdown) {
-      pageMarkdown = markdown;
+      extractionFailed = true;
+      pageMarkdown = '';
     }
 
     // Extract Section Names
     const sectionNames: string[] = [];
-    const sectionMatches = pageMarkdown.matchAll(/(?:####|###|\*\*)\s*(?:Section|\d+\.)\s*(.+?)(?:\n|\*|$)/gi);
-    for (const match of sectionMatches) {
-      const name = match[1].replace(/[\*\_]/g, '').trim();
-      if (name && !sectionNames.includes(name)) {
-        sectionNames.push(name);
+    if (pageMarkdown) {
+      const sectionMatches = pageMarkdown.matchAll(/(?:####|###|\*\*)\s*(?:Section|\d+\.)\s*(.+?)(?:\n|\*|$)/gi);
+      for (const match of sectionMatches) {
+        const name = match[1].replace(/[\*\_]/g, '').trim();
+        if (name && !sectionNames.includes(name)) {
+          sectionNames.push(name);
+        }
       }
     }
     if (sectionNames.length === 0 && page.keySections) {
@@ -56,23 +60,43 @@ export function extractPagesFromChunkMarkdown(
     let metaTitle = page.metaTitle || `${page.pageName} - ${page.pageSlug}`;
     let metaDescription = page.metaDescription || `Halaman ${page.pageName}`;
 
-    const titleMatch = pageMarkdown.match(/SEO Meta Title Target:\s*(.+)/i) || pageMarkdown.match(/Meta Title:\s*(.+)/i);
-    if (titleMatch) metaTitle = titleMatch[1].trim();
+    if (pageMarkdown) {
+      const titleMatch = pageMarkdown.match(/SEO Meta Title Target:\s*(.+)/i) || pageMarkdown.match(/Meta Title:\s*(.+)/i);
+      if (titleMatch) metaTitle = titleMatch[1].trim();
 
-    const descMatch = pageMarkdown.match(/SEO Meta Description Target:\s*(.+)/i) || pageMarkdown.match(/Meta Description:\s*(.+)/i);
-    if (descMatch) metaDescription = descMatch[1].trim();
+      const descMatch = pageMarkdown.match(/SEO Meta Description Target:\s*(.+)/i) || pageMarkdown.match(/Meta Description:\s*(.+)/i);
+      if (descMatch) metaDescription = descMatch[1].trim();
+    }
 
     // Extract Internal Links
     const internalLinks: string[] = [];
-    const linkMatches = pageMarkdown.matchAll(/`(\/[a-z0-9\-\_]*)`/gi);
-    for (const match of linkMatches) {
-      const link = match[1];
-      if (link && link !== page.pageSlug && !internalLinks.includes(link)) {
-        internalLinks.push(link);
+    if (pageMarkdown) {
+      const linkMatches = pageMarkdown.matchAll(/`(\/[a-z0-9\-\_]*)`/gi);
+      for (const match of linkMatches) {
+        const link = match[1];
+        if (link && link !== page.pageSlug && !internalLinks.includes(link)) {
+          internalLinks.push(link);
+        }
       }
     }
 
     const comp = calculatePageComplexity(page);
+    let validation = validateMarkdownIntegrity(pageMarkdown);
+
+    if (extractionFailed) {
+      validation = {
+        isValid: false,
+        issues: [
+          {
+            type: 'CRITICAL',
+            category: 'PAGE',
+            message: `Page extraction failed: content/markers missing for page "${page.pageName}" (\`${page.id}\`).`,
+            target: pageId,
+          },
+        ],
+        warnings: ['Page content was empty after extraction from batch output.'],
+      };
+    }
 
     result[pageId] = {
       pageId,
@@ -87,11 +111,108 @@ export function extractPagesFromChunkMarkdown(
       metaTitle,
       metaDescription,
       internalLinks,
-      validation: validateMarkdownIntegrity(pageMarkdown),
+      validation,
     };
   }
 
   return result;
+}
+
+export function validateFoundationChunk(chunkKey: string, markdown: string): ValidationResult {
+  const issues: ValidationIssue[] = [];
+  const warnings: string[] = [];
+
+  if (!markdown || markdown.trim().length < 100) {
+    issues.push({
+      type: 'CRITICAL',
+      category: 'STRUCTURE',
+      message: `Foundation chunk "${chunkKey}" is empty or too short.`,
+    });
+    return { isValid: false, issues, warnings };
+  }
+
+  const markVal = validateMarkdownIntegrity(markdown);
+  if (!markVal.isValid) {
+    issues.push(...markVal.issues);
+  }
+  warnings.push(...markVal.warnings);
+
+  // Specific key checks
+  if (chunkKey.includes('business')) {
+    if (!/Executive Summary/i.test(markdown)) issues.push({ type: 'CRITICAL', category: 'STRUCTURE', message: 'Business chunk missing "Executive Summary".' });
+    if (!/Problem Statement/i.test(markdown)) issues.push({ type: 'CRITICAL', category: 'STRUCTURE', message: 'Business chunk missing "Problem Statement".' });
+    if (!/Target Audience/i.test(markdown)) issues.push({ type: 'CRITICAL', category: 'STRUCTURE', message: 'Business chunk missing "Target Audience".' });
+  } else if (chunkKey.includes('architecture')) {
+    if (!/Sitemap/i.test(markdown)) issues.push({ type: 'CRITICAL', category: 'STRUCTURE', message: 'Architecture chunk missing "Sitemap".' });
+    if (!/User Flow/i.test(markdown)) issues.push({ type: 'CRITICAL', category: 'STRUCTURE', message: 'Architecture chunk missing "User Flow".' });
+  } else if (chunkKey.includes('design')) {
+    if (!/Skala Tipografi|Typography/i.test(markdown)) warnings.push('Design System chunk missing explicit typography scale.');
+  }
+
+  const isValid = issues.filter((i) => i.type === 'CRITICAL').length === 0;
+  return { isValid, issues, warnings };
+}
+
+export function parseCrossPageQAChunkToLock(markdown: string): CrossPageQALock {
+  let nav = 'PASS';
+  let term = 'PASS';
+  let cta = 'PASS';
+  let design = 'PASS';
+  let links = 'PASS';
+  let dups = 'PASS';
+  let role = 'PASS';
+  let seo = 'PASS';
+  let resp = 'PASS';
+
+  const findings: string[] = [];
+  const repairs: string[] = [];
+
+  const startMarker = '<!-- CROSS_PAGE_QA_START -->';
+  const endMarker = '<!-- CROSS_PAGE_QA_END -->';
+
+  if (markdown.includes(startMarker) && markdown.includes(endMarker)) {
+    const block = markdown.split(startMarker)[1].split(endMarker)[0];
+
+    const getVal = (key: string) => {
+      const match = block.match(new RegExp(`${key}:\\s*(PASS|WARNING|FAIL)`, 'i'));
+      return match ? match[1].toUpperCase() : 'PASS';
+    };
+
+    nav = getVal('NAVIGATION');
+    term = getVal('TERMINOLOGY');
+    cta = getVal('CTA');
+    design = getVal('DESIGN_TOKENS');
+    links = getVal('INTERNAL_LINKS');
+    dups = getVal('DUPLICATION');
+    role = getVal('PAGE_ROLE_SEPARATION');
+    seo = getVal('SEO');
+    resp = getVal('RESPONSIVE');
+
+    const findingsMatch = block.match(/FINDINGS:\s*([\s\S]*?)(?=REPAIRS:|$)/i);
+    if (findingsMatch) {
+      findingsMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => findings.push(l.slice(1).trim()));
+    }
+
+    const repairsMatch = block.match(/REPAIRS:\s*([\s\S]*?)$/i);
+    if (repairsMatch) {
+      repairsMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => repairs.push(l.slice(1).trim()));
+    }
+  }
+
+  return {
+    navigationConsistency: nav,
+    terminologyConsistency: term,
+    CTAConsistency: cta,
+    designTokenConsistency: design,
+    internalLinkConsistency: links,
+    sectionDuplicationCheck: dups,
+    pageRoleSeparation: role,
+    seoConsistency: seo,
+    responsiveConsistency: resp,
+    findings,
+    requiredRepairs: repairs,
+    rawMarkdown: markdown,
+  };
 }
 
 export function validateMarkdownIntegrity(markdown: string): ValidationResult {

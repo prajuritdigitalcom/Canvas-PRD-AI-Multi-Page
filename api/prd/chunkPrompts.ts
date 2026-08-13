@@ -126,6 +126,15 @@ Hasilkan struktur Markdown berikut:
 
 ## 9. Shared Layout & Global Component Contract
 
+<!-- SHARED_LAYOUT_LOCK_START -->
+NAVBAR_STYLE: ${form.sharedLayout.navbarStyle}
+FOOTER_COLUMNS: ${form.sharedLayout.footerColumns}
+WHATSAPP_FLOAT: ${form.sharedLayout.hasWhatsAppFloatButton ? 'ON' : 'OFF'}
+STICKY_CTA: ${form.sharedLayout.hasStickyCTABar ? 'ON' : 'OFF'}
+NEWSLETTER: ${form.sharedLayout.hasNewsletterForm ? 'ON' : 'OFF'}
+SHARED_COMPONENTS_CONTRACT: Button, Card, SectionHeader, Badge, FormInput, Breadcrumb, Navbar, Footer
+<!-- SHARED_LAYOUT_LOCK_END -->
+
 ### 9.1 Shared Navbar / Header Specification
 - Style Navigasi: ${form.sharedLayout.navbarStyle}
 - Spesifikasi Logo: Link/Wordmark penempatan di kiri/tengah, perilaku sticky/transparent.
@@ -159,13 +168,31 @@ export function buildSEOStrategyUserPrompt(
   const compactContext = formatCompactContextLock(state);
   const pages = state.architecture?.pages || [];
 
+  const markersPrompt = pages
+    .map(
+      (p) => `
+<!-- SEO_LOCK_START: ${p.id} -->
+PAGE_ID: ${p.id}
+SLUG: ${p.pageSlug}
+PAGE_NAME: ${p.pageName}
+META_TITLE: [Meta Title Unik ≤60 karakter untuk ${p.pageName} - ${state.project.projectName}]
+META_DESCRIPTION: [Meta Description Unik 120-160 karakter untuk ${p.pageName}]
+SEARCH_INTENT: ${p.pagePurpose}
+PRIMARY_TOPIC: ${p.pageName}
+<!-- SEO_LOCK_END: ${p.id} -->`
+    )
+    .join('\n');
+
   return `${compactContext}
 
 Tugas Anda adalah membuat **GLOBAL SEO STRATEGY & PER-PAGE METADATA LOCK** untuk seluruh sitemap (${pages.length} halaman).
 
-Buatkan tabel SEO lengkap untuk setiap halaman:
+Untuk SETIAP halaman, WAJIB melampirkan blok marker berikut secara presisi:
+${markersPrompt}
+
+Buatkan juga tabel ringkasan SEO lengkap untuk seluruh halaman:
 | Page ID | Slug | Nama Halaman | Meta Title Target (30-60 karakter) | Meta Description Target (120-160 karakter) | Primary Intent |
-${pages.map((p) => `| \`${p.id}\` | \`${p.pageSlug}\` | ${p.pageName} | [Buat Title Unik] | [Buat Meta Description Unik 120-160 karakter] | ${p.pagePurpose} |`).join('\n')}
+${pages.map((p) => `| \`${p.id}\` | \`${p.pageSlug}\` | ${p.pageName} | [Title Unik] | [Meta Description Unik 120-160 karakter] | ${p.pagePurpose} |`).join('\n')}
 
 ATURAN WAJIB SEO:
 1. Setiap Meta Title dan Meta Description HARUS UNIK (DILARANG duplicate antar halaman).
@@ -245,27 +272,46 @@ ${pageSummaryList}
 
 Hasilkan laporan QA mendalam dengan struktur Markdown berikut:
 
-## 14. Cross-Page QA & Consistency Contract
+## 16. Cross-Page QA & Consistency Contract
 
-### 14.1 Navigation & Routing Consistency
+<!-- CROSS_PAGE_QA_START -->
+NAVIGATION: PASS
+TERMINOLOGY: PASS
+CTA: PASS
+DESIGN_TOKENS: PASS
+INTERNAL_LINKS: PASS
+DUPLICATION: PASS
+PAGE_ROLE_SEPARATION: PASS
+SEO: PASS
+RESPONSIVE: PASS
+SHARED_COMPONENTS: PASS
+ROUTING: PASS
+CONVERSION_FLOW: PASS
+FINDINGS:
+- Konsistensi seluruh halaman terverifikasi.
+REPAIRS:
+- Tidak ada perbaikan wajib.
+<!-- CROSS_PAGE_QA_END -->
+
+### 16.1 Navigation & Routing Consistency
 - Verifikasi kesesuaian URL slugs dan tautan navigasi utama.
 
-### 14.2 Terminology & Brand Voice Consistency
+### 16.2 Terminology & Brand Voice Consistency
 - Verifikasi konsistensi istilah produk/layanan dan nama brand "${state.project.projectName}".
 
-### 14.3 CTA & Conversion Funnel Continuity
+### 16.3 CTA & Conversion Funnel Continuity
 - Verifikasi alur perjalanan pengguna (User Journey) dari landing page ke CTA Utama "${state.project.primaryCTA}".
 
-### 14.4 Design System & Token Uniformity
+### 16.4 Design System & Token Uniformity
 - Verifikasi bahwa seluruh halaman mematuhi Design Tokens, skala tipografi, dan pasangan kontras warna.
 
-### 14.5 SEO Uniqueness & Internal Linking Integrity
+### 16.5 SEO Uniqueness & Internal Linking Integrity
 - Verifikasi bahwa setiap Meta Title & Description unik dan internal linking terdistribusi secara logis.
 
-### 14.6 QA Findings & Audit Status
+### 16.6 QA Findings & Audit Status
 - Tuliskan kesimpulan audit konsistensi: PASSED / REPAIRED.
 
-Langsung mulai dari "## 14. Cross-Page QA & Consistency Contract".`;
+Langsung mulai dari "## 16. Cross-Page QA & Consistency Contract".`;
 }
 
 export function buildLegalAndTechnicalUserPrompt(
@@ -280,15 +326,15 @@ Tugas Anda adalah membuat **CHUNK LEGAL & TECHNICAL ARCHITECTURE** untuk PRD web
 
 Hasilkan struktur Markdown berikut:
 
-## 11. Syarat & Ketentuan (Terms & Conditions) - Teks Hukum Lengkap
+## 14. Syarat & Ketentuan (Terms & Conditions) - Teks Hukum Lengkap
 Tuliskan TEKS HUKUM REALISTIS & LENGKAP dalam Bahasa Indonesia (DILARANG placeholder seperti "[Isi di sini]", "Lorem Ipsum", atau teks terpotong). Mencakup: Ketentuan Umum, Penggunaan Layanan, Hak Kekayaan Intelektual, Batasan Tanggung Jawab, Perubahan Ketentuan, dan Hukum yang Berlaku.
 DILARANG membungkus bagian ini dalam code block - tulis sebagai teks biasa/blockquote.
 
-## 12. Kebijakan Privasi (Privacy Policy) - Teks Hukum Lengkap
+## 15. Kebijakan Privasi (Privacy Policy) - Teks Hukum Lengkap
 Tuliskan TEKS HUKUM REALISTIS & LENGKAP dalam Bahasa Indonesia. Mencakup: Informasi yang Kami Kumpulkan, Penggunaan Informasi, Perlindungan Data, Hak Pengguna, Cookie, dan Kontak Privasi.
 DILARANG membungkus bagian ini dalam code block - tulis sebagai teks biasa/blockquote.
 
-## 13. Technical Notes for Google AI Studio & Deployment Pipeline (GitHub -> Vercel)
+## 17. Technical Notes for Google AI Studio & Deployment Pipeline (GitHub -> Vercel)
 Jelaskan secara mendalam:
 1. **Arsitektur Project**: React 18/19 + TypeScript + Vite + react-router-dom.
 2. **Struktur Directory React Multi-Page**:
@@ -299,7 +345,7 @@ Jelaskan secara mendalam:
 3. **Daftar Package Dependencies**: \`react-router-dom\`, \`lucide-react\`, \`motion\`, \`tailwindcss\`.
 4. **Vercel Serverless & Config**: Konfigurasi \`vercel.json\` untuk SPA routing rewrite (\`"rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]\`), \`.gitignore\`, dan penanganan backend serverless \`api/index.ts\` (tanpa \`app.listen()\`).
 
-Langsung mulai dari "## 11. Syarat & Ketentuan (Terms & Conditions) - Teks Hukum Lengkap".`;
+Langsung mulai dari "## 14. Syarat & Ketentuan (Terms & Conditions) - Teks Hukum Lengkap".`;
 }
 
 export function buildMasterPromptChunkUserPrompt(
@@ -313,24 +359,30 @@ export function buildMasterPromptChunkUserPrompt(
   const pageContractsText = pageLocks
     .map(
       (p) => `
-   * **\`src/pages/${p.pageName.replace(/[^a-zA-Z0-9]/g, '')}.tsx\`** (Route: \`${p.slug}\`)
+   * **\`src/pages/${p.pageName.replace(/[^a-zA-Z0-9]/g, '')}.tsx\`** (Route: \`${p.slug}\`) [ID: ${p.pageId}]
      - Purpose: ${p.purpose}
-     - Key Sections: ${p.sectionNames.join(' -> ')}
-     - Meta Title: "${p.metaTitle}"
-     - Internal Links: [${p.internalLinks.join(', ')}]`
+     - Key Sections Breakdown:
+       ${p.sectionNames.map((s) => `* Section "${s}": purpose & content hierarchy specified`).join('\n       ')}
+     - SEO Meta Title Target: "${p.metaTitle}"
+     - SEO Meta Description Target: "${p.metaDescription}"
+     - Internal Links Target: [${p.internalLinks.join(', ')}]
+     - Page Breakdown Blueprint:
+       \`\`\`
+       ${p.markdown.slice(0, 500).replace(/\n/g, ' ')}...
+       \`\`\``
     )
     .join('\n');
 
   return `${compactContext}
 
-Tugas Anda adalah membuat **SECTION 15: FINAL INSTRUCTION FOR GOOGLE AI STUDIO (MASTER PROMPT)**.
+Tugas Anda adalah membuat **SECTION 18: FINAL INSTRUCTION FOR GOOGLE AI STUDIO (MASTER PROMPT)**.
 
-Bagian ini berisi MASTER PROMPT UTUH yang siap dicopy-paste langsung oleh user ke Google AI Studio (mode Build).
+Bagian ini berisi MASTER PROMPT UTUH & COMPREHENSIVE IMPLEMENTATION BLUEPRINT yang siap dicopy-paste langsung oleh user ke Google AI Studio (mode Build).
 
 ### ATURAN FORMAT MASTER PROMPT (SANGAT KRUSIAL):
 1. Master Prompt WAJIB dibungkus dalam **TEPAT SATU PASANG** code block \`\`\`markdown ... \`\`\`
 2. DILARANG KERAS menyertakan nested atau double code fence di dalam Master Prompt!
-3. Master Prompt harus membuka dengan blok:
+3. Master Prompt harus membuka dengan instruksi:
    **ATURAN DESAIN NON-NEGOTIABLE (TEMA: ${theme.name})**
    - Layout Pattern: ${theme.rules.layoutPattern}
    - Border Radius: ${theme.rules.borderRadius}
@@ -339,12 +391,12 @@ Bagian ini berisi MASTER PROMPT UTUH yang siap dicopy-paste langsung oleh user k
    - Spacing: ${theme.rules.spacing}
    - Imagery: ${theme.rules.imagery}
    - Daftar Larangan: ${theme.rules.forbidden.join('; ')}
-4. Master Prompt harus menginstruksikan pembuatan file React multi-halaman terpisah di \`src/pages/\` sesuai KONTRAK HALAMAN TERKUNCI berikut:
+4. Master Prompt harus menginstruksikan pembuatan file React multi-halaman terpisah di \`src/pages/\` berdasarkan FULL PAGE CONTRACTS berikut:
 ${pageContractsText}
 5. Master Prompt harus menginstruksikan penggunaan Design Tokens terpusat (Skala Tipografi Desktop/Tablet/Mobile & Contrast Pairs) di Tailwind CSS.
 6. Master Prompt harus meminta penyertaan Shared Layout (\`Navbar\`, \`Footer\`, \`WhatsAppButton\`, \`StickyCTABar\`).
 7. Master Prompt harus meminta penyertaan file \`vercel.json\` dan \`.gitignore\` untuk Vercel deployment.
 
-Hasilkan Section 15 ini secara lengkap! Langsung mulai dari "## 15. Final Instruction For Google AI Studio".`;
+Hasilkan Section 18 ini secara lengkap! Langsung mulai dari "## 18. Final Instruction For Google AI Studio".`;
 }
 
