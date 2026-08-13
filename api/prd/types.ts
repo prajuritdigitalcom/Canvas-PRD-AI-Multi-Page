@@ -130,7 +130,7 @@ export interface GeneratedChunkRecord {
   stageNumber: number;
   markdown: string;
   summary: string;
-  status: 'GENERATED' | 'REPAIRED' | 'FAILED';
+  status: 'GENERATED' | 'VALIDATED' | 'REPAIRED' | 'FAILED';
   attempt: number;
   validation: ValidationResult;
 }

@@ -130,55 +130,79 @@ export async function generateMultiPagePRDPipeline(
     return runnerResult.data || '';
   };
 
-  const saveChunkRecord = (key: string, stageNumber: number, markdown: string) => {
-    contextState.generatedChunks[key] = {
-      chunkKey: key,
+  // Helper executor for foundation chunks with Validation & Retry
+  const runValidatedFoundationChunk = async (
+    chunkKey: string,
+    stageNumber: number,
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<string> => {
+    let output = await runChunkGeneration(chunkKey, systemPrompt, userPrompt);
+    let valResult = validateFoundationChunk(chunkKey, output);
+    let attempt = 1;
+
+    if (!valResult.isValid) {
+      const feedbackPrompt = `${userPrompt}
+
+PREVIOUS ATTEMPT FAILED VALIDATION REASONS:
+${valResult.issues.map((i) => `- ${i.message}`).join('\n')}
+
+PLEASE REPAIR AND RETURN THE COMPLETE CORRECTED SECTION.`;
+
+      const retryOutput = await runChunkGeneration(chunkKey, systemPrompt, feedbackPrompt);
+      const retryVal = validateFoundationChunk(chunkKey, retryOutput);
+      attempt = 2;
+      if (retryVal.isValid || retryOutput.length > output.length) {
+        output = retryOutput;
+        valResult = retryVal;
+      }
+    }
+
+    contextState.generatedChunks[chunkKey] = {
+      chunkKey,
       stageNumber,
-      markdown,
-      summary: markdown.slice(0, 150),
-      status: 'GENERATED',
-      attempt: 1,
-      validation: validateMarkdownIntegrity(markdown),
+      markdown: output,
+      summary: output.slice(0, 150),
+      status: valResult.isValid ? 'VALIDATED' : 'FAILED',
+      attempt,
+      validation: valResult,
     };
+
+    return output;
   };
 
   // STAGE 1: BUSINESS STRATEGY
   const sysPrompt1 = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_1_BUSINESS);
   const userPrompt1 = buildFoundationChunkUserPrompt(PRD_CHUNK_KEYS.CHUNK_1_BUSINESS, formState, contextState);
-  const out1 = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_1_BUSINESS, sysPrompt1, userPrompt1);
-  saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_1_BUSINESS, 1, out1);
+  const out1 = await runValidatedFoundationChunk(PRD_CHUNK_KEYS.CHUNK_1_BUSINESS, 1, sysPrompt1, userPrompt1);
   contextState.strategy = parseBusinessChunkToLock(out1);
   contextState.completedStages.push('Business Strategy Lock');
 
   // STAGE 2: ARCHITECTURE & UX
   const sysPrompt2 = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_2_ARCHITECTURE);
   const userPrompt2 = buildFoundationChunkUserPrompt(PRD_CHUNK_KEYS.CHUNK_2_ARCHITECTURE, formState, contextState);
-  const out2 = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_2_ARCHITECTURE, sysPrompt2, userPrompt2);
-  saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_2_ARCHITECTURE, 2, out2);
+  const out2 = await runValidatedFoundationChunk(PRD_CHUNK_KEYS.CHUNK_2_ARCHITECTURE, 2, sysPrompt2, userPrompt2);
   contextState.architecture = parseArchitectureChunkToLock(out2, sanitizedPages);
   contextState.completedStages.push('Information Architecture Lock');
 
   // STAGE 3: DESIGN SYSTEM
   const sysPrompt3 = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_3_DESIGN_SYSTEM);
   const userPrompt3 = buildFoundationChunkUserPrompt(PRD_CHUNK_KEYS.CHUNK_3_DESIGN_SYSTEM, formState, contextState);
-  const out3 = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_3_DESIGN_SYSTEM, sysPrompt3, userPrompt3);
-  saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_3_DESIGN_SYSTEM, 3, out3);
+  const out3 = await runValidatedFoundationChunk(PRD_CHUNK_KEYS.CHUNK_3_DESIGN_SYSTEM, 3, sysPrompt3, userPrompt3);
   contextState.design = parseDesignChunkToLock(out3, selectedTheme);
   contextState.completedStages.push('Design System Lock');
 
   // STAGE 4: SHARED LAYOUT
   const sysPrompt4 = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_4_SHARED_LAYOUT);
   const userPrompt4 = buildFoundationChunkUserPrompt(PRD_CHUNK_KEYS.CHUNK_4_SHARED_LAYOUT, formState, contextState);
-  const out4 = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_4_SHARED_LAYOUT, sysPrompt4, userPrompt4);
-  saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_4_SHARED_LAYOUT, 4, out4);
+  const out4 = await runValidatedFoundationChunk(PRD_CHUNK_KEYS.CHUNK_4_SHARED_LAYOUT, 4, sysPrompt4, userPrompt4);
   contextState.sharedLayout = parseSharedLayoutChunkToLock(out4, formState);
   contextState.completedStages.push('Shared Layout Lock');
 
   // STAGE 5: SEO STRATEGY PASS
   const sysPromptSEO = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_SEO_STRATEGY);
   const userPromptSEO = buildSEOStrategyUserPrompt(contextState);
-  const outSEO = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_SEO_STRATEGY, sysPromptSEO, userPromptSEO);
-  saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_SEO_STRATEGY, 5, outSEO);
+  const outSEO = await runValidatedFoundationChunk(PRD_CHUNK_KEYS.CHUNK_SEO_STRATEGY, 5, sysPromptSEO, userPromptSEO);
   contextState.seo = parseSEOStrategyToLock(outSEO, sanitizedPages);
   contextState.completedStages.push('SEO Strategy Lock');
 
@@ -212,57 +236,93 @@ PLEASE REPAIR ONLY THE MISSING/INCOMPLETE SECTIONS AND RETURN THE COMPLETE CORRE
 
     // Extract pages using deterministic marker/regex extractor
     const extractedPages = extractPagesFromChunkMarkdown(batchOutput, batch.pages);
-    Object.assign(contextState.generatedPages, extractedPages);
 
+    // Targeted recovery for any page where extraction or validation failed
+    for (const page of batch.pages) {
+      if (!extractedPages[page.id] || !extractedPages[page.id].markdown || !extractedPages[page.id].validation?.isValid) {
+        const singleSysPrompt = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_PAGE_BATCH);
+        const singleUserPrompt = `Generasikan breakdown PRD mendalam untuk halaman tunggal "${page.pageName}" (\`${page.pageSlug}\`).
+${formatCompactContextLock(contextState)}
+
+WAJIB GUNAKAN MARKER:
+<!-- PAGE_START: ${page.id} -->
+PAGE_ID: ${page.id}
+PAGE_NAME: ${page.pageName}
+SLUG: ${page.pageSlug}
+
+### Halaman: ${page.pageName} (\`${page.pageSlug}\`)
+Purpose: ${page.pagePurpose}
+Key Sections: ${(page.keySections || []).join(', ')}
+
+### Section Breakdown:
+(Tuliskan breakdown section secara mendalam dengan content hierarchy, layout, interactive elements, responsive behavior, accessibility)
+<!-- PAGE_END: ${page.id} -->`;
+
+        const singleOutput = await runChunkGeneration(`SINGLE_PAGE_${page.id}`, singleSysPrompt, singleUserPrompt);
+        const reExtracted = extractPagesFromChunkMarkdown(singleOutput, [page]);
+        if (reExtracted[page.id] && reExtracted[page.id].markdown) {
+          extractedPages[page.id] = reExtracted[page.id];
+        }
+      }
+    }
+
+    Object.assign(contextState.generatedPages, extractedPages);
     contextState.completedStages.push(`Page Batch ${batch.batchIndex}/${pageBatches.length}`);
   }
 
   // STAGE 7: LEGAL & TECHNICAL CHUNK
   const legalSysPrompt = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_6_LEGAL_TECHNICAL);
   const legalUserPrompt = buildLegalAndTechnicalUserPrompt(formState, contextState);
-  const legalOutput = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_6_LEGAL_TECHNICAL, legalSysPrompt, legalUserPrompt);
-  saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_6_LEGAL_TECHNICAL, 7, legalOutput);
+  const legalOutput = await runValidatedFoundationChunk(PRD_CHUNK_KEYS.CHUNK_6_LEGAL_TECHNICAL, 7, legalSysPrompt, legalUserPrompt);
   contextState.completedStages.push('Legal & Technical Lock');
 
   // STAGE 8: CROSS-PAGE QA CHUNK
   const qaSysPrompt = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_CROSS_PAGE_QA);
   const qaUserPrompt = buildCrossPageQAUserPrompt(contextState);
-  const qaOutput = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_CROSS_PAGE_QA, qaSysPrompt, qaUserPrompt);
-  saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_CROSS_PAGE_QA, 8, qaOutput);
+  const qaOutput = await runValidatedFoundationChunk(PRD_CHUNK_KEYS.CHUNK_CROSS_PAGE_QA, 8, qaSysPrompt, qaUserPrompt);
   contextState.crossPageQA = parseCrossPageQAChunkToLock(qaOutput);
   contextState.completedStages.push('Cross-Page QA Lock');
 
-  // STAGE 9: MASTER PROMPT CHUNK (SECTION 15)
+  // STAGE 9: MASTER PROMPT CHUNK (SECTION 18)
   const masterSysPrompt = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_MASTER_PROMPT);
   const masterUserPrompt = buildMasterPromptChunkUserPrompt(formState, contextState);
-  const masterOutput = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_MASTER_PROMPT, masterSysPrompt, masterUserPrompt);
-  saveChunkRecord(PRD_CHUNK_KEYS.CHUNK_MASTER_PROMPT, 9, masterOutput);
+  const masterOutput = await runValidatedFoundationChunk(PRD_CHUNK_KEYS.CHUNK_MASTER_PROMPT, 9, masterSysPrompt, masterUserPrompt);
   contextState.completedStages.push('Master Prompt Lock');
 
   // STAGE 10: FINAL ASSEMBLY & QUALITY SCORING
   let finalMarkdown = assembleFinalPRDDocument(contextState);
   let qualityResult = calculatePRDQualityScore(finalMarkdown, contextState);
 
-  // STAGE 11: SURGICAL REPAIR PASS IF NEEDED
+  // STAGE 11: SURGICAL REPAIR PASS (Targeted Chunk / Page Repair Only - NO slice(0, 8000)!)
   if (!qualityResult.isBuildReady && qualityResult.warnings.length > 0) {
-    const repairSysPrompt = `You are an expert PRD Quality Repair Specialist. Fix specific PRD warnings without altering valid content.`;
-    const repairUserPrompt = `The following PRD document has minor quality warnings:
-${qualityResult.warnings.map((w) => `- ${w}`).join('\n')}
+    // Identify invalid pages and repair individually
+    const invalidPageIds = Object.keys(contextState.generatedPages).filter(
+      (pId) => !contextState.generatedPages[pId].validation?.isValid || !contextState.generatedPages[pId].markdown
+    );
 
-DOCUMENT CONTENT TO REPAIR:
-${finalMarkdown.slice(0, 8000)}...
+    for (const pageId of invalidPageIds) {
+      const pageDef = sanitizedPages.find((p) => p.id === pageId);
+      if (pageDef) {
+        const repairSys = `You are a PRD Page Repair Specialist. Fix and return complete markdown for page "${pageDef.pageName}".`;
+        const repairUser = `Re-generate full specification for page "${pageDef.pageName}" (${pageDef.pageSlug}).
+${formatCompactContextLock(contextState)}
 
-Please return the corrected PRD markdown repairing the issues above.`;
+MARKER PROTOCOL:
+<!-- PAGE_START: ${pageId} -->
+...
+<!-- PAGE_END: ${pageId} -->`;
 
-    try {
-      const repairedMarkdown = await runChunkGeneration('QA_REPAIR_PASS', repairSysPrompt, repairUserPrompt);
-      if (repairedMarkdown && repairedMarkdown.length > finalMarkdown.length * 0.7) {
-        finalMarkdown = repairedMarkdown;
-        qualityResult = calculatePRDQualityScore(finalMarkdown, contextState);
+        const repairedSingle = await runChunkGeneration(`REPAIR_PAGE_${pageId}`, repairSys, repairUser);
+        const reExtracted = extractPagesFromChunkMarkdown(repairedSingle, [pageDef]);
+        if (reExtracted[pageId] && reExtracted[pageId].markdown) {
+          contextState.generatedPages[pageId] = reExtracted[pageId];
+        }
       }
-    } catch (e) {
-      console.warn('QA Repair Pass skipped due to runner error:', e);
     }
+
+    // Reassemble and recalculate final score
+    finalMarkdown = assembleFinalPRDDocument(contextState);
+    qualityResult = calculatePRDQualityScore(finalMarkdown, contextState);
   }
 
   return {

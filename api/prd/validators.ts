@@ -26,9 +26,10 @@ export function extractPagesFromChunkMarkdown(
 
     // 2. Fallback Strategy: Regex Matching if markers were dropped by LLM
     if (!pageMarkdown) {
-      const escapedName = page.pageName.replace(/[^a-zA-Z0-9]/g, '.*');
-      const escapedSlug = page.pageSlug.replace(/[^a-zA-Z0-9]/g, '.*');
-      const pageRegex = new RegExp(`(?:###|##)\\s*.*(?:${escapedName}|${escapedSlug}|${pageId})[\\s\\S]*?(?=(?:###|##)\\s*.*(?:Halaman|PAGE_START)|$)`, 'i');
+      const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedName = escapeRegExp(page.pageName.trim());
+      const escapedSlug = page.pageSlug !== '/' ? escapeRegExp(page.pageSlug) : '(?<![a-zA-Z0-9])\\/(?![a-zA-Z0-9])';
+      const pageRegex = new RegExp(`(?:###|##)\\s*.*(?:${escapedName}|${escapedSlug}|${page.id})[\\s\\S]*?(?=(?:###|##)\\s*.*(?:Halaman|PAGE_START)|$)`, 'i');
       const match = markdown.match(pageRegex);
       if (match) {
         pageMarkdown = match[0].trim();

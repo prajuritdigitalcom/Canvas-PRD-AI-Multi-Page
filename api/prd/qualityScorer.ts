@@ -120,7 +120,9 @@ export function calculatePRDQualityScore(
   seoLegalVal.warnings.forEach((w) => warnings.push(w));
   crossVal.warnings.forEach((w) => warnings.push(w));
 
-  const isBuildReady = readyScore >= 80 && structVal.isValid;
+  const allPagesValid = totalPages > 0 && generatedPageLocks.length === totalPages && generatedPageLocks.every((p) => p.markdown && p.sectionNames.length > 0 && p.validation?.isValid !== false);
+
+  const isBuildReady = readyScore >= 94 && structVal.isValid && allPagesValid;
 
   return {
     readyScore,

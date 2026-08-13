@@ -26,7 +26,7 @@ export function assembleFinalPRDDocument(state: PRDContextState): string {
     .filter(Boolean)
     .join('\n\n---\n\n');
 
-  const pageBreakdownSection = `## 10. Page-by-Page & Section-by-Section Breakdown\n\n${pagesMarkdown}`;
+  const pageBreakdownSection = `## 13. Page-by-Page & Section-by-Section Breakdown\n\n${pagesMarkdown}`;
 
   const chunkLegalTech = chunks[PRD_CHUNK_KEYS.CHUNK_6_LEGAL_TECHNICAL]?.markdown || '';
   const chunkCrossQA = chunks[PRD_CHUNK_KEYS.CHUNK_CROSS_PAGE_QA]?.markdown || '';

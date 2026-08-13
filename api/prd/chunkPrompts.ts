@@ -367,9 +367,7 @@ export function buildMasterPromptChunkUserPrompt(
      - SEO Meta Description Target: "${p.metaDescription}"
      - Internal Links Target: [${p.internalLinks.join(', ')}]
      - Page Breakdown Blueprint:
-       \`\`\`
-       ${p.markdown.slice(0, 500).replace(/\n/g, ' ')}...
-       \`\`\``
+${p.markdown}`
     )
     .join('\n');
 

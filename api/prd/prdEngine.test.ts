@@ -1,12 +1,20 @@
 import { lockAndSanitizePagePlan, planAdaptivePageBatches } from './pageChunkPlanner.js';
-import { formatCompactContextLock } from './contextSummary.js';
+import {
+  formatCompactContextLock,
+  parseSharedLayoutChunkToLock,
+  parseSEOStrategyToLock,
+} from './contextSummary.js';
 import {
   validateMarkdownIntegrity,
   validateStructuralCompleteness,
   validatePageCompleteness,
   validateSEOAndLegalQuality,
   validateCrossPageConsistency,
+  validateFoundationChunk,
+  extractPagesFromChunkMarkdown,
+  parseCrossPageQAChunkToLock,
 } from './validators.js';
+import { buildMasterPromptChunkUserPrompt } from './chunkPrompts.js';
 import { calculatePRDQualityScore } from './qualityScorer.js';
 import { assembleFinalPRDDocument } from './finalAssembler.js';
 import { PRDContextState } from './types.js';
@@ -284,6 +292,114 @@ Master prompt content
     throw new Error(`Test Failed: Quality score too low for valid document: ${scoreResult.readyScore}`);
   }
   console.log(`✓ Quality Scorer Passed (Calculated Score: ${scoreResult.readyScore}/100)`);
+
+  // 5. Test Foundation Chunk Validation
+  const invalidBusinessMd = "Short text";
+  const valFoundation = validateFoundationChunk(PRD_CHUNK_KEYS.CHUNK_1_BUSINESS, invalidBusinessMd);
+  if (valFoundation.isValid) {
+    throw new Error('Test Failed: Short text should fail foundation chunk validation.');
+  }
+  console.log('✓ Foundation Chunk Validation Test Passed');
+
+  // 6. Test Shared Layout User Precedence
+  const mockFormState = {
+    sharedLayout: {
+      navbarStyle: 'Minimalist' as const,
+      footerColumns: 3,
+      hasWhatsAppFloatButton: false,
+      hasStickyCTABar: true,
+      hasNewsletterForm: false,
+    },
+  } as any;
+  const aiMarkdown = `
+<!-- SHARED_LAYOUT_LOCK_START -->
+NAVBAR_STYLE: MegaMenu
+FOOTER_COLUMNS: 5
+WHATSAPP_FLOAT: ON
+STICKY_CTA: OFF
+NEWSLETTER: ON
+SHARED_COMPONENTS_CONTRACT: Button, Card
+<!-- SHARED_LAYOUT_LOCK_END -->
+`;
+  const parsedShared = parseSharedLayoutChunkToLock(aiMarkdown, mockFormState);
+  if (parsedShared.navbarStyle !== 'Minimalist' || parsedShared.hasWhatsAppFloatButton !== false) {
+    throw new Error(`Test Failed: User explicit override not respected! Got navbar ${parsedShared.navbarStyle}`);
+  }
+  console.log('✓ Shared Layout User Precedence Test Passed');
+
+  // 7. Test SEO Markers & Deterministic Lock
+  const seoAiMarkdown = `
+<!-- SEO_LOCK_START: p1 -->
+META_TITLE: Home Page Title Target
+META_DESCRIPTION: Home Page Description Target 120-160 chars
+SEARCH_INTENT: Main landing intent
+<!-- SEO_LOCK_END: p1 -->
+`;
+  const parsedSEO = parseSEOStrategyToLock(seoAiMarkdown, lockedPages);
+  if (parsedSEO.pages['p1']?.metaTitle !== 'Home Page Title Target') {
+    throw new Error(`Test Failed: SEO Lock marker parsing failed! Got ${parsedSEO.pages['p1']?.metaTitle}`);
+  }
+  console.log('✓ SEO Markers & Deterministic Lock Test Passed');
+
+  // 8. Test Page Extraction Safety (No Whole-Batch Fallback)
+  const malformedBatchMd = `
+### Halaman: Unrelated Page
+Purpose: Random purpose
+`;
+  const extracted = extractPagesFromChunkMarkdown(malformedBatchMd, [lockedPages[0]]);
+  if (extracted['p1'].validation.isValid || extracted['p1'].markdown === malformedBatchMd) {
+    throw new Error('Test Failed: Extraction failure should NOT assign full batch markdown as fallback!');
+  }
+  console.log('✓ Page Extraction Safety (No Whole-Batch Fallback) Test Passed');
+
+  // 9. Test Master Prompt Full Page Specification (No 500-char truncation)
+  const longPageMd = 'A'.repeat(2000);
+  const mockStateForMasterPrompt: any = {
+    project: { projectName: 'TEST' },
+    design: { themeId: 'MODERN_CLEAN' },
+    generatedPages: {
+      p1: {
+        pageId: 'p1',
+        pageName: 'Home',
+        slug: '/',
+        purpose: 'Main',
+        sectionNames: ['Hero'],
+        metaTitle: 'Title',
+        metaDescription: 'Desc',
+        internalLinks: [],
+        markdown: longPageMd,
+      },
+    },
+  };
+  const masterUserPrompt = buildMasterPromptChunkUserPrompt({ designThemeId: 'MODERN_CLEAN' } as any, mockStateForMasterPrompt);
+  if (!masterUserPrompt.includes(longPageMd)) {
+    throw new Error('Test Failed: Master Prompt prompt truncated full page specification!');
+  }
+  console.log('✓ Master Prompt Full Page Specification Test Passed');
+
+  // 10. Test Cross-Page QA Parsing
+  const qaMarkdown = `
+<!-- CROSS_PAGE_QA_START -->
+NAVIGATION: PASS
+TERMINOLOGY: PASS
+CTA: WARNING
+DESIGN_TOKENS: PASS
+INTERNAL_LINKS: PASS
+DUPLICATION: PASS
+PAGE_ROLE_SEPARATION: PASS
+SEO: PASS
+RESPONSIVE: PASS
+FINDINGS:
+- CTA button text slightly inconsistent between Home and Contact.
+REPAIRS:
+- Standardized CTA text to "Hubungi Kami".
+<!-- CROSS_PAGE_QA_END -->
+`;
+  const parsedQA = parseCrossPageQAChunkToLock(qaMarkdown);
+  if (parsedQA.CTAConsistency !== 'WARNING' || parsedQA.findings.length !== 1) {
+    throw new Error('Test Failed: Cross-Page QA marker parsing failed!');
+  }
+  console.log('✓ Cross-Page QA Lock Parsing Test Passed');
 
   console.log('ALL PRD ENGINE TESTS PASSED SUCCESSFULLY!');
 }
