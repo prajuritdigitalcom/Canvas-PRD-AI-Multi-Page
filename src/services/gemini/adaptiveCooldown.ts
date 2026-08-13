@@ -8,24 +8,25 @@ export interface KeyState {
   lastErrorType?: string;
 }
 
-// In-memory local cooldown map using key hashes / masked IDs
-// Note: This serves as best-effort local optimization on server instances
+// In-memory local cooldown map scoped by poolFingerprint + keyHash
 const keyStateMap = new Map<string, KeyState>();
 
 /**
- * Creates a simple non-reversible hash / key identifier for state tracking without storing raw key
+ * Creates a simple non-reversible scoped key hash for state tracking.
+ * Strictly scoped by poolFingerprint to ensure Visitor Isolation.
  */
-function getKeyHash(apiKey: string): string {
+function getScopedKeyHash(apiKey: string, poolFingerprint: string = 'global'): string {
   let hash = 0;
-  for (let i = 0; i < apiKey.length; i++) {
-    hash = (hash << 5) - hash + apiKey.charCodeAt(i);
+  const combined = `${poolFingerprint}::${apiKey.trim()}`;
+  for (let i = 0; i < combined.length; i++) {
+    hash = (hash << 5) - hash + combined.charCodeAt(i);
     hash |= 0;
   }
-  return `key_${Math.abs(hash)}_${apiKey.slice(-4)}`;
+  return `scoped_${Math.abs(hash)}_${apiKey.trim().slice(-4)}`;
 }
 
-export function getKeyState(apiKey: string): KeyState {
-  const hash = getKeyHash(apiKey);
+export function getKeyState(apiKey: string, poolFingerprint: string = 'global'): KeyState {
+  const hash = getScopedKeyHash(apiKey, poolFingerprint);
   const now = Date.now();
   let state = keyStateMap.get(hash);
 
@@ -44,9 +45,14 @@ export function getKeyState(apiKey: string): KeyState {
   return state;
 }
 
-export function markKeyCooldown(apiKey: string, retryAfterMs?: number | null, reason?: string): KeyState {
-  const hash = getKeyHash(apiKey);
-  const state = getKeyState(apiKey);
+export function markKeyCooldown(
+  apiKey: string,
+  poolFingerprint: string = 'global',
+  retryAfterMs?: number | null,
+  reason?: string
+): KeyState {
+  const hash = getScopedKeyHash(apiKey, poolFingerprint);
+  const state = getKeyState(apiKey, poolFingerprint);
   const now = Date.now();
 
   state.failureCount += 1;
@@ -68,9 +74,13 @@ export function markKeyCooldown(apiKey: string, retryAfterMs?: number | null, re
   return state;
 }
 
-export function markKeyInvalid(apiKey: string, reason?: string): KeyState {
-  const hash = getKeyHash(apiKey);
-  const state = getKeyState(apiKey);
+export function markKeyInvalid(
+  apiKey: string,
+  poolFingerprint: string = 'global',
+  reason?: string
+): KeyState {
+  const hash = getScopedKeyHash(apiKey, poolFingerprint);
+  const state = getKeyState(apiKey, poolFingerprint);
 
   state.status = 'INVALID';
   state.lastErrorType = reason || 'Invalid Credential';
@@ -78,9 +88,12 @@ export function markKeyInvalid(apiKey: string, reason?: string): KeyState {
   return state;
 }
 
-export function markKeySuccess(apiKey: string): KeyState {
-  const hash = getKeyHash(apiKey);
-  const state = getKeyState(apiKey);
+export function markKeySuccess(
+  apiKey: string,
+  poolFingerprint: string = 'global'
+): KeyState {
+  const hash = getScopedKeyHash(apiKey, poolFingerprint);
+  const state = getKeyState(apiKey, poolFingerprint);
 
   state.status = 'READY';
   state.failureCount = 0;

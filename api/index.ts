@@ -4,7 +4,7 @@ import { Type } from '@google/genai';
 import { buildSystemPrompt, buildUserPrompt, buildAnalysisPrompt } from '../src/prompts/promptTemplates.js';
 import { ProjectFormState, PRDGenerateResponse, BriefAnalysisResponse } from '../src/types.js';
 import { getModelFallbackChain } from '../src/config/aiModel.js';
-import { getVisitorKeysFromRequest } from '../src/services/gemini/visitorKeyParser.js';
+import { getVisitorKeysFromRequest, maskApiKey } from '../src/services/gemini/visitorKeyParser.js';
 import { runGeminiWithVisitorKeys } from '../src/services/gemini/geminiRequestRunner.js';
 
 // Vercel serverless function timeout (set to 300 seconds as required)
@@ -125,8 +125,13 @@ const verifyKeyWithGoogle = async (
 ): Promise<{ valid: boolean; reason?: string }> => {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
-      { headers: { 'User-Agent': 'aistudio-build' } }
+      'https://generativelanguage.googleapis.com/v1beta/models',
+      {
+        headers: {
+          'x-goog-api-key': key,
+          'User-Agent': 'aistudio-build',
+        },
+      }
     );
 
     if (response.ok) {
@@ -160,9 +165,14 @@ app.post('/api/validate-keys', async (req, res) => {
       .filter(Boolean);
 
     const results = await Promise.all(
-      candidates.map(async (key) => {
+      candidates.map(async (key, index) => {
         const result = await verifyKeyWithGoogle(key);
-        return { key, ...result };
+        return {
+          index,
+          maskedKey: maskApiKey(key),
+          valid: result.valid,
+          reason: result.reason,
+        };
       })
     );
 
@@ -187,7 +197,7 @@ app.post('/api/analyze-brief', async (req, res) => {
     const visitorKeys = getVisitorKeysFromRequest(req);
     if (visitorKeys.length === 0) {
       return res.status(400).json({
-        error: 'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.',
+        error: 'Tidak ada API Key yang tersedia. Masukkan API Key Gemini Anda di menu Gemini API Key.',
       });
     }
 
@@ -282,7 +292,7 @@ app.post('/api/generate-prd', async (req, res) => {
     const visitorKeys = getVisitorKeysFromRequest(req);
     if (visitorKeys.length === 0) {
       return res.status(400).json({
-        error: 'Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.',
+        error: 'Tidak ada API Key yang tersedia. Masukkan API Key Gemini Anda di menu Gemini API Key.',
       });
     }
 

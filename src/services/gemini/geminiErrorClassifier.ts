@@ -1,4 +1,4 @@
-export type GeminiErrorType = 'RETRYABLE' | 'PERMANENT';
+export type GeminiErrorType = 'PERMANENT' | 'RETRYABLE' | 'REQUEST_ERROR' | 'UNKNOWN';
 
 export interface ClassifiedError {
   type: GeminiErrorType;
@@ -24,7 +24,7 @@ export function classifyGeminiError(error: any): ClassifiedError {
     }
   }
 
-  // Check for Permanent errors (Invalid API key, Unauthorized, Forbidden key configuration, Malformed input)
+  // Check for Permanent errors (Invalid API key / Unauthorized / Forbidden)
   const isPermanent =
     status === 401 ||
     status === 403 ||
@@ -32,14 +32,29 @@ export function classifyGeminiError(error: any): ClassifiedError {
     msg.includes('api key not valid') ||
     msg.includes('invalid api key') ||
     msg.includes('unauthorized') ||
-    msg.includes('forbidden') ||
-    msg.includes('invalid_argument');
+    msg.includes('forbidden');
 
   if (isPermanent) {
     return {
       type: 'PERMANENT',
       reason: 'API Key tidak valid atau tidak memiliki akses.',
       statusCode: status || 401,
+      retryAfterMs: null,
+    };
+  }
+
+  // Check for Request errors (HTTP 400, bad prompt, malformed arguments)
+  const isRequestError =
+    status === 400 ||
+    msg.includes('invalid_argument') ||
+    msg.includes('invalid argument') ||
+    msg.includes('bad request');
+
+  if (isRequestError) {
+    return {
+      type: 'REQUEST_ERROR',
+      reason: error?.message || 'Format request atau argumen tidak valid.',
+      statusCode: 400,
       retryAfterMs: null,
     };
   }
@@ -76,10 +91,9 @@ export function classifyGeminiError(error: any): ClassifiedError {
     };
   }
 
-  // Default fallback: treat as retryable to allow failover to another key if available
   return {
-    type: 'RETRYABLE',
-    reason: error?.message || 'Terjadi kesalahan saat memanggil API Gemini.',
+    type: 'UNKNOWN',
+    reason: error?.message || 'Terjadi kesalahan tidak terduga saat memanggil API Gemini.',
     statusCode: status || 500,
     retryAfterMs: null,
   };

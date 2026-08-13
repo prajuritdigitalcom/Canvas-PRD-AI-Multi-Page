@@ -31,7 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'settings' as const,
-      label: 'Sistem & API Key',
+      label: 'Gemini API Key',
       icon: Settings,
       desc: 'Pengaturan API Key Gemini',
     },

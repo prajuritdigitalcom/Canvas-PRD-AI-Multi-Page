@@ -45,7 +45,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }
 
       const validResults = (data.results || []).filter((r: any) => r.valid);
-      const validKeys: string[] = validResults.map((r: any) => r.key);
+      const validKeys: string[] = validResults
+        .map((r: any) => (typeof r.index === 'number' ? candidates[r.index] : r.key))
+        .filter(Boolean);
       const invalidCount = (data.results || []).length - validKeys.length;
 
       if (validKeys.length > 0) {

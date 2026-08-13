@@ -1,6 +1,22 @@
 import express from 'express';
 
 /**
+ * Generates a deterministic, non-reversible fingerprint for a list of visitor API keys.
+ * Used to isolate Round Robin cursors and Adaptive Cooldown states per visitor key pool.
+ */
+export function getPoolFingerprint(keys: string[]): string {
+  if (!keys || keys.length === 0) return 'empty_pool';
+  const sorted = Array.from(new Set(keys.map((k) => k.trim()).filter(Boolean))).sort();
+  const rawJoined = sorted.join('|');
+  let hash = 0;
+  for (let i = 0; i < rawJoined.length; i++) {
+    hash = (hash << 5) - hash + rawJoined.charCodeAt(i);
+    hash |= 0;
+  }
+  return `pool_${Math.abs(hash)}_${sorted.length}`;
+}
+
+/**
  * Parses and sanitizes Visitor API keys sent via HTTP headers (x-user-api-keys or x-user-api-key).
  * Strictly returns ONLY the visitor's provided API keys.
  * NO server environment variables or backup keys are included.

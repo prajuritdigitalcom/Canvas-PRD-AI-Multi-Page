@@ -25,25 +25,19 @@ export async function runGeminiWithVisitorKeys<T>({
   executor,
 }: GeminiRunnerContext): Promise<GeminiRunnerResult<T>> {
   if (!keys || keys.length === 0) {
-    throw new Error('Tidak ada API Key yang tersedia. Masukkan API Key Gemini pribadi Anda di menu Sistem & API Key.');
+    throw new Error('Tidak ada API Key yang tersedia. Masukkan API Key Gemini Anda di menu Gemini API Key.');
   }
 
   const scheduler = new VisitorKeyScheduler(keys);
+  const poolFingerprint = scheduler.getPoolFingerprint();
+  const maxAttempts = scheduler.getCandidateCount();
   let lastError: any = null;
 
-  while (true) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const selected = scheduler.getNextEligibleKey();
 
     if (!selected) {
-      // No eligible ready key remaining in this request cycle
-      if (lastError) {
-        const classified = classifyGeminiError(lastError);
-        if (classified.statusCode === 429) {
-          throw new Error('Semua API Key Gemini Anda sedang mengalami rate limit / cooldown. Mohon tunggu beberapa saat atau tambahkan API Key Gemini lain.');
-        }
-        throw new Error(`Semua API Key Gemini Anda gagal digunakan: ${classified.reason}`);
-      }
-      throw new Error('Semua API Key Gemini Anda sedang tidak dapat digunakan (cooldown/invalid). Mohon masukkan API Key Gemini yang valid.');
+      break;
     }
 
     const { key, maskedId } = selected;
@@ -60,7 +54,7 @@ export async function runGeminiWithVisitorKeys<T>({
         });
 
         const result = await executor(ai, key, modelCandidate);
-        markKeySuccess(key);
+        markKeySuccess(key, poolFingerprint);
 
         return {
           data: result,
@@ -71,17 +65,33 @@ export async function runGeminiWithVisitorKeys<T>({
         lastError = err;
         const classified = classifyGeminiError(err);
 
-        console.warn(`[GeminiRunner] Visitor Key ${maskedId} model ${modelCandidate} failed: ${classified.reason}`);
+        console.warn(`[GeminiRunner] Visitor Key ${maskedId} model ${modelCandidate} failed (${classified.type}): ${classified.reason}`);
 
-        if (classified.type === 'PERMANENT') {
-          markKeyInvalid(key, classified.reason);
-          break; // Break model loop, failover to next visitor key
+        if (classified.type === 'REQUEST_ERROR') {
+          // Bad request (HTTP 400). Do not blame API key or failover endlessly.
+          throw new Error(`Permintaan tidak valid: ${classified.reason}`);
+        } else if (classified.type === 'PERMANENT') {
+          markKeyInvalid(key, poolFingerprint, classified.reason);
+          break; // Failover to next candidate key in this pool
+        } else if (classified.type === 'RETRYABLE') {
+          markKeyCooldown(key, poolFingerprint, classified.retryAfterMs, classified.reason);
+          break; // Failover to next candidate key in this pool
         } else {
-          // Retryable error (429, 5xx, timeout, etc.)
-          markKeyCooldown(key, classified.retryAfterMs, classified.reason);
-          break; // Break model loop, failover to next visitor key
+          // UNKNOWN error
+          throw new Error(`Gagal memanggil Gemini API: ${classified.reason}`);
         }
       }
     }
   }
+
+  // All keys in the pool attempted or in cooldown/invalid
+  if (lastError) {
+    const classified = classifyGeminiError(lastError);
+    if (classified.statusCode === 429) {
+      throw new Error('Semua API Key Gemini Anda sedang mengalami rate limit / cooldown. Mohon tunggu beberapa saat atau tambahkan API Key Gemini lain.');
+    }
+    throw new Error(`Semua API Key Gemini Anda tidak dapat digunakan: ${classified.reason}`);
+  }
+
+  throw new Error('Semua API Key Gemini Anda sedang dalam masa cooldown atau tidak valid. Mohon periksa kembali API Key Anda.');
 }
