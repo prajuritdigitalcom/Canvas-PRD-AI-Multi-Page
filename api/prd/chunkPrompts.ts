@@ -256,19 +256,27 @@ export function buildCrossPageQAUserPrompt(
   const compactContext = formatCompactContextLock(state);
   const pageLocks = Object.values(state.generatedPages);
 
-  const pageSummaryList = pageLocks
+  const fullPageSpecsList = pageLocks
     .map(
-      (p) =>
-        `- **${p.pageName}** (\`${p.slug}\`) [ID: ${p.pageId}]: Meta Title: "${p.metaTitle}", Internal Links: [${p.internalLinks.join(', ')}]`
+      (p) => `
+### FULL SPECIFICATION FOR PAGE: ${p.pageName} (\`${p.slug}\`) [ID: ${p.pageId}]
+- Type: ${p.pageType}
+- Purpose: ${p.purpose}
+- SEO Meta Title: "${p.metaTitle}"
+- SEO Meta Description: "${p.metaDescription}"
+- Key Sections: [${p.sectionNames.join(', ')}]
+- Internal Links: [${p.internalLinks.join(', ')}]
+- Page Breakdown:
+${p.markdown}`
     )
-    .join('\n');
+    .join('\n\n---');
 
   return `${compactContext}
 
 Tugas Anda adalah menjalankan **CROSS-PAGE QUALITY ASSURANCE & CONSISTENCY REVIEW** untuk seluruh website multi-halaman ini (${pageLocks.length} halaman).
 
-Ringkasan Halaman Terkunci:
-${pageSummaryList}
+SPESIFIKASI LENGKAP SELURUH HALAMAN UNTUK DIAUDIT:
+${fullPageSpecsList}
 
 Hasilkan laporan QA mendalam dengan struktur Markdown berikut:
 
@@ -279,14 +287,16 @@ NAVIGATION: PASS
 TERMINOLOGY: PASS
 CTA: PASS
 DESIGN_TOKENS: PASS
+SHARED_COMPONENTS: PASS
 INTERNAL_LINKS: PASS
 DUPLICATION: PASS
 PAGE_ROLE_SEPARATION: PASS
 SEO: PASS
 RESPONSIVE: PASS
-SHARED_COMPONENTS: PASS
-ROUTING: PASS
 CONVERSION_FLOW: PASS
+ROUTING: PASS
+CRITICAL_FINDINGS:
+- None
 FINDINGS:
 - Konsistensi seluruh halaman terverifikasi.
 REPAIRS:
@@ -312,6 +322,49 @@ REPAIRS:
 - Tuliskan kesimpulan audit konsistensi: PASSED / REPAIRED.
 
 Langsung mulai dari "## 16. Cross-Page QA & Consistency Contract".`;
+}
+
+export function buildFinalDocumentQAUserPrompt(
+  finalMarkdown: string,
+  state: PRDContextState
+): string {
+  const compactContext = formatCompactContextLock(state);
+
+  return `${compactContext}
+
+Tugas Anda adalah melakukan **FINAL DOCUMENT QA & INTEGRITY CHECK** untuk seluruh dokumen PRD Multi-Halaman berikut.
+
+DOKUMEN PRD FINAL UNTUK DIAUDIT:
+${finalMarkdown}
+
+Evaluasi dokumen di atas terhadap 6 pilar kualitas:
+1. **STRUCTURAL**: Semua section wajib ada, urutan canonical teratur, numbering rapi.
+2. **SEMANTIC**: Tujuan bisnis, sitemap, dan breakdown halaman konsisten satu sama lain.
+3. **SEO**: Meta Title & Description unik per halaman, slug konsisten.
+4. **LEGAL**: Syarat & Ketentuan dan Kebijakan Privasi terisi lengkap (tanpa placeholder/Lorem Ipsum).
+5. **TECHNICAL**: Arsitektur React/TypeScript/Vite/Router dan Section 18 (Master Prompt) lengkap.
+6. **IMPLEMENTATION_READY**: Siap langsung diproses oleh Google AI Studio Build.
+
+HAPUS BASA-BASI DAN LANGSUNG HASILKAN OUTPUT AUDIT DENGAN MARKER PROTOCOL KETAT:
+
+<!-- FINAL_QA_START -->
+STATUS: PASS
+STRUCTURAL: PASS
+SEMANTIC: PASS
+SEO: PASS
+LEGAL: PASS
+TECHNICAL: PASS
+IMPLEMENTATION_READY: PASS
+CRITICAL_FINDINGS:
+- None
+FINDINGS:
+- Dokumen tervalidasi utuh dan konsisten.
+REPAIRS:
+- None
+<!-- FINAL_QA_END -->
+
+### Final Document Audit Overview
+Tuliskan ringkasan hasil audit final secara profesional dan obyektif.`;
 }
 
 export function buildLegalAndTechnicalUserPrompt(

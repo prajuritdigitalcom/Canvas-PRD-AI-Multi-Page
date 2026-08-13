@@ -13,6 +13,7 @@ import {
   validateFoundationChunk,
   extractPagesFromChunkMarkdown,
   parseCrossPageQAChunkToLock,
+  parseFinalQAChunkToLock,
 } from './validators.js';
 import { buildMasterPromptChunkUserPrompt } from './chunkPrompts.js';
 import { calculatePRDQualityScore } from './qualityScorer.js';
@@ -384,11 +385,16 @@ NAVIGATION: PASS
 TERMINOLOGY: PASS
 CTA: WARNING
 DESIGN_TOKENS: PASS
+SHARED_COMPONENTS: PASS
 INTERNAL_LINKS: PASS
 DUPLICATION: PASS
 PAGE_ROLE_SEPARATION: PASS
 SEO: PASS
 RESPONSIVE: PASS
+CONVERSION_FLOW: PASS
+ROUTING: PASS
+CRITICAL_FINDINGS:
+- None
 FINDINGS:
 - CTA button text slightly inconsistent between Home and Contact.
 REPAIRS:
@@ -400,6 +406,30 @@ REPAIRS:
     throw new Error('Test Failed: Cross-Page QA marker parsing failed!');
   }
   console.log('✓ Cross-Page QA Lock Parsing Test Passed');
+
+  // 11. Test Final QA Lock Parsing & Hard Quality Gates
+  const finalQAMarkdown = `
+<!-- FINAL_QA_START -->
+STATUS: PASS
+STRUCTURAL: PASS
+SEMANTIC: PASS
+SEO: PASS
+LEGAL: PASS
+TECHNICAL: PASS
+IMPLEMENTATION_READY: PASS
+CRITICAL_FINDINGS:
+- None
+FINDINGS:
+- Document fully verified.
+REPAIRS:
+- None
+<!-- FINAL_QA_END -->
+`;
+  const parsedFinalQA = parseFinalQAChunkToLock(finalQAMarkdown);
+  if (parsedFinalQA.status !== 'PASS' || parsedFinalQA.implementationReady !== 'PASS') {
+    throw new Error('Test Failed: Final QA marker parsing failed!');
+  }
+  console.log('✓ Final QA Lock Parsing Test Passed');
 
   console.log('ALL PRD ENGINE TESTS PASSED SUCCESSFULLY!');
 }

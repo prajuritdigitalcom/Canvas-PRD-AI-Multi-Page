@@ -8,6 +8,7 @@ import {
   buildSEOStrategyUserPrompt,
   buildPageBatchChunkUserPrompt,
   buildCrossPageQAUserPrompt,
+  buildFinalDocumentQAUserPrompt,
   buildLegalAndTechnicalUserPrompt,
   buildMasterPromptChunkUserPrompt,
 } from './chunkPrompts.js';
@@ -28,6 +29,7 @@ import {
   validateFoundationChunk,
   extractPagesFromChunkMarkdown,
   parseCrossPageQAChunkToLock,
+  parseFinalQAChunkToLock,
 } from './validators.js';
 import { getModelFallbackChain } from '../../src/config/aiModel.js';
 import { runGeminiWithVisitorKeys } from '../../src/services/gemini/geminiRequestRunner.js';
@@ -291,11 +293,18 @@ Key Sections: ${(page.keySections || []).join(', ')}
 
   // STAGE 10: FINAL ASSEMBLY & QUALITY SCORING
   let finalMarkdown = assembleFinalPRDDocument(contextState);
+
+  // STAGE 10.5: FINAL DOCUMENT QA PASS
+  const finalQASysPrompt = getSystemPromptForChunk(PRD_CHUNK_KEYS.CHUNK_FINAL_DOCUMENT_QA);
+  const finalQAUserPrompt = buildFinalDocumentQAUserPrompt(finalMarkdown, contextState);
+  const finalQAOutput = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_FINAL_DOCUMENT_QA, finalQASysPrompt, finalQAUserPrompt);
+  contextState.finalQA = parseFinalQAChunkToLock(finalQAOutput);
+  contextState.completedStages.push('Final Document QA Audit');
+
   let qualityResult = calculatePRDQualityScore(finalMarkdown, contextState);
 
-  // STAGE 11: SURGICAL REPAIR PASS (Targeted Chunk / Page Repair Only - NO slice(0, 8000)!)
-  if (!qualityResult.isBuildReady && qualityResult.warnings.length > 0) {
-    // Identify invalid pages and repair individually
+  // STAGE 11: SURGICAL REPAIR PASS WITH STATE RETENTION RULE (NO slice(0, 8000)!)
+  if (!qualityResult.isBuildReady || (contextState.finalQA && contextState.finalQA.status !== 'PASS')) {
     const invalidPageIds = Object.keys(contextState.generatedPages).filter(
       (pId) => !contextState.generatedPages[pId].validation?.isValid || !contextState.generatedPages[pId].markdown
     );
@@ -309,19 +318,36 @@ ${formatCompactContextLock(contextState)}
 
 MARKER PROTOCOL:
 <!-- PAGE_START: ${pageId} -->
-...
+PAGE_ID: ${pageId}
+PAGE_NAME: ${pageDef.pageName}
+SLUG: ${pageDef.pageSlug}
+
+### Halaman: ${pageDef.pageName} (\`${pageDef.pageSlug}\`)
+Purpose: ${pageDef.pagePurpose}
+Key Sections: ${(pageDef.keySections || []).join(', ')}
+
+### Section Breakdown:
+(Tuliskan breakdown section secara mendalam)
 <!-- PAGE_END: ${pageId} -->`;
 
         const repairedSingle = await runChunkGeneration(`REPAIR_PAGE_${pageId}`, repairSys, repairUser);
         const reExtracted = extractPagesFromChunkMarkdown(repairedSingle, [pageDef]);
-        if (reExtracted[pageId] && reExtracted[pageId].markdown) {
-          contextState.generatedPages[pageId] = reExtracted[pageId];
+        const repairedLock = reExtracted[pageId];
+
+        // STATE RETENTION RULE: Only commit replacement if repaired result is valid
+        if (repairedLock && repairedLock.markdown && repairedLock.validation?.isValid !== false) {
+          contextState.generatedPages[pageId] = repairedLock;
         }
       }
     }
 
-    // Reassemble and recalculate final score
+    // Reassemble and rerun Final QA & Quality Score
     finalMarkdown = assembleFinalPRDDocument(contextState);
+
+    const reQAUserPrompt = buildFinalDocumentQAUserPrompt(finalMarkdown, contextState);
+    const reQAOutput = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_FINAL_DOCUMENT_QA, finalQASysPrompt, reQAUserPrompt);
+    contextState.finalQA = parseFinalQAChunkToLock(reQAOutput);
+
     qualityResult = calculatePRDQualityScore(finalMarkdown, contextState);
   }
 

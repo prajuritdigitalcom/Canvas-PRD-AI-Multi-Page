@@ -140,25 +140,31 @@ export interface CrossPageQALock {
   terminologyConsistency: string;
   CTAConsistency: string;
   designTokenConsistency: string;
+  sharedComponentsConsistency: string;
   internalLinkConsistency: string;
   sectionDuplicationCheck: string;
   pageRoleSeparation: string;
   seoConsistency: string;
   responsiveConsistency: string;
+  conversionFlowConsistency: string;
+  routingConsistency: string;
+  criticalFindings: string[];
   findings: string[];
   requiredRepairs: string[];
   rawMarkdown: string;
 }
 
 export interface FinalQALock {
-  structural: ValidationResult;
-  semantic: ValidationResult;
-  seo: ValidationResult;
-  legal: ValidationResult;
-  technical: ValidationResult;
-  finalScore: number;
-  passed: string[];
-  warnings: string[];
+  status: 'PASS' | 'REPAIR_REQUIRED' | 'FAIL';
+  structural: 'PASS' | 'FAIL';
+  semantic: 'PASS' | 'FAIL';
+  seo: 'PASS' | 'FAIL';
+  legal: 'PASS' | 'FAIL';
+  technical: 'PASS' | 'FAIL';
+  implementationReady: 'PASS' | 'FAIL';
+  criticalFindings: string[];
+  findings: string[];
+  requiredRepairs: string[];
   rawMarkdown: string;
 }
 

@@ -53,17 +53,66 @@ export function calculatePRDQualityScore(
 
   // 6. Cross-Page Consistency (15%)
   let crossPageScore = 15;
-  if (state.crossPageQA?.rawMarkdown) {
-    crossPageScore = 15;
+  let crossPagePass = true;
+  if (state.crossPageQA) {
+    const checks = [
+      state.crossPageQA.navigationConsistency,
+      state.crossPageQA.terminologyConsistency,
+      state.crossPageQA.CTAConsistency,
+      state.crossPageQA.designTokenConsistency,
+      state.crossPageQA.sharedComponentsConsistency,
+      state.crossPageQA.internalLinkConsistency,
+      state.crossPageQA.sectionDuplicationCheck,
+      state.crossPageQA.pageRoleSeparation,
+      state.crossPageQA.seoConsistency,
+      state.crossPageQA.responsiveConsistency,
+      state.crossPageQA.conversionFlowConsistency,
+      state.crossPageQA.routingConsistency,
+    ];
+
+    checks.forEach((val) => {
+      if (val === 'WARNING') crossPageScore -= 1;
+      if (val === 'FAIL') {
+        crossPageScore -= 3;
+        crossPagePass = false;
+      }
+    });
+
+    if (state.crossPageQA.criticalFindings && state.crossPageQA.criticalFindings.length > 0) {
+      crossPageScore -= 5;
+      crossPagePass = false;
+    }
   } else {
     if (!crossVal.isValid) crossPageScore -= 8;
+    crossPagePass = false;
   }
 
   // 7. SEO Completeness (10%)
   let seoScore = 10;
   const pageWithMetaTitle = generatedPageLocks.filter((p) => p.metaTitle && p.metaTitle.length > 5).length;
+  const pageWithMetaDesc = generatedPageLocks.filter((p) => p.metaDescription && p.metaDescription.length > 10).length;
+
   if (totalPages > 0) {
-    seoScore = Math.round(10 * (pageWithMetaTitle / totalPages));
+    const titleRatio = pageWithMetaTitle / totalPages;
+    const descRatio = pageWithMetaDesc / totalPages;
+    seoScore = Math.round(5 * titleRatio + 5 * descRatio);
+  }
+
+  // Check SEO Title & Description Uniqueness
+  const metaTitles = generatedPageLocks.map((p) => (p.metaTitle || '').trim().toLowerCase()).filter(Boolean);
+  const metaDescs = generatedPageLocks.map((p) => (p.metaDescription || '').trim().toLowerCase()).filter(Boolean);
+
+  const uniqueTitles = new Set(metaTitles);
+  const uniqueDescs = new Set(metaDescs);
+
+  let seoLockValid = true;
+  if (metaTitles.length < totalPages || uniqueTitles.size < metaTitles.length) {
+    seoScore -= 3;
+    seoLockValid = false;
+  }
+  if (metaDescs.length < totalPages || uniqueDescs.size < metaDescs.length) {
+    seoScore -= 2;
+    seoLockValid = false;
   }
 
   // 8. Accessibility (5%)
@@ -120,9 +169,16 @@ export function calculatePRDQualityScore(
   seoLegalVal.warnings.forEach((w) => warnings.push(w));
   crossVal.warnings.forEach((w) => warnings.push(w));
 
-  const allPagesValid = totalPages > 0 && generatedPageLocks.length === totalPages && generatedPageLocks.every((p) => p.markdown && p.sectionNames.length > 0 && p.validation?.isValid !== false);
+  if (!seoLockValid) {
+    warnings.push('SEO Meta Titles or Meta Descriptions contain duplicate or missing entries across pages.');
+  }
 
-  const isBuildReady = readyScore >= 94 && structVal.isValid && allPagesValid;
+  const allPagesValid = totalPages > 0 && generatedPageLocks.length === totalPages && generatedPageLocks.every((p) => p.markdown && p.sectionNames.length > 0 && p.validation?.isValid !== false);
+  const masterPromptPass = /Final Instruction For Google AI Studio|MASTER PROMPT/i.test(markdown);
+  const finalQAPass = !state.finalQA || (state.finalQA.status !== 'FAIL' && state.finalQA.criticalFindings.length === 0);
+  const zeroCriticalFindings = (state.crossPageQA?.criticalFindings?.length || 0) === 0 && (state.finalQA?.criticalFindings?.length || 0) === 0;
+
+  const isBuildReady = readyScore >= 94 && structVal.isValid && allPagesValid && seoLockValid && seoLegalVal.isValid && crossPagePass && masterPromptPass && finalQAPass && zeroCriticalFindings;
 
   return {
     readyScore,

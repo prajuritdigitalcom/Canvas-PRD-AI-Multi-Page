@@ -1,4 +1,4 @@
-import { ValidationIssue, ValidationResult, PRDContextState, GeneratedPageLock, CrossPageQALock } from './types.js';
+import { ValidationIssue, ValidationResult, PRDContextState, GeneratedPageLock, CrossPageQALock, FinalQALock } from './types.js';
 import { PageDefinition } from '../../src/types.js';
 import { calculatePageComplexity } from './pageChunkPlanner.js';
 
@@ -159,12 +159,16 @@ export function parseCrossPageQAChunkToLock(markdown: string): CrossPageQALock {
   let term = 'PASS';
   let cta = 'PASS';
   let design = 'PASS';
+  let shared = 'PASS';
   let links = 'PASS';
   let dups = 'PASS';
   let role = 'PASS';
   let seo = 'PASS';
   let resp = 'PASS';
+  let conv = 'PASS';
+  let routing = 'PASS';
 
+  const criticalFindings: string[] = [];
   const findings: string[] = [];
   const repairs: string[] = [];
 
@@ -183,20 +187,43 @@ export function parseCrossPageQAChunkToLock(markdown: string): CrossPageQALock {
     term = getVal('TERMINOLOGY');
     cta = getVal('CTA');
     design = getVal('DESIGN_TOKENS');
+    shared = getVal('SHARED_COMPONENTS');
     links = getVal('INTERNAL_LINKS');
     dups = getVal('DUPLICATION');
     role = getVal('PAGE_ROLE_SEPARATION');
     seo = getVal('SEO');
     resp = getVal('RESPONSIVE');
+    conv = getVal('CONVERSION_FLOW');
+    routing = getVal('ROUTING');
 
-    const findingsMatch = block.match(/FINDINGS:\s*([\s\S]*?)(?=REPAIRS:|$)/i);
+    const critMatch = block.match(/CRITICAL_FINDINGS:\s*([\s\S]*?)(?=(?:FINDINGS|REPAIRS):|$)/i);
+    if (critMatch) {
+      critMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => {
+        const item = l.slice(1).trim();
+        if (item && !['none', 'tidak ada', 'nil', '-'].includes(item.toLowerCase())) {
+          criticalFindings.push(item);
+        }
+      });
+    }
+
+    const findingsMatch = block.match(/FINDINGS:\s*([\s\S]*?)(?=(?:REPAIRS|CRITICAL_FINDINGS):|$)/i);
     if (findingsMatch) {
-      findingsMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => findings.push(l.slice(1).trim()));
+      findingsMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => {
+        const item = l.slice(1).trim();
+        if (item && !['none', 'tidak ada', 'nil', '-'].includes(item.toLowerCase())) {
+          findings.push(item);
+        }
+      });
     }
 
     const repairsMatch = block.match(/REPAIRS:\s*([\s\S]*?)$/i);
     if (repairsMatch) {
-      repairsMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => repairs.push(l.slice(1).trim()));
+      repairsMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => {
+        const item = l.slice(1).trim();
+        if (item && !['none', 'tidak ada', 'nil', '-'].includes(item.toLowerCase())) {
+          repairs.push(item);
+        }
+      });
     }
   }
 
@@ -205,13 +232,106 @@ export function parseCrossPageQAChunkToLock(markdown: string): CrossPageQALock {
     terminologyConsistency: term,
     CTAConsistency: cta,
     designTokenConsistency: design,
+    sharedComponentsConsistency: shared,
     internalLinkConsistency: links,
     sectionDuplicationCheck: dups,
     pageRoleSeparation: role,
     seoConsistency: seo,
     responsiveConsistency: resp,
+    conversionFlowConsistency: conv,
+    routingConsistency: routing,
+    criticalFindings,
     findings,
     requiredRepairs: repairs,
+    rawMarkdown: markdown,
+  };
+}
+
+export function parseFinalQAChunkToLock(markdown: string): FinalQALock {
+  let status: 'PASS' | 'REPAIR_REQUIRED' | 'FAIL' = 'PASS';
+  let structural: 'PASS' | 'FAIL' = 'PASS';
+  let semantic: 'PASS' | 'FAIL' = 'PASS';
+  let seo: 'PASS' | 'FAIL' = 'PASS';
+  let legal: 'PASS' | 'FAIL' = 'PASS';
+  let technical: 'PASS' | 'FAIL' = 'PASS';
+  let implementationReady: 'PASS' | 'FAIL' = 'PASS';
+
+  const criticalFindings: string[] = [];
+  const findings: string[] = [];
+  const requiredRepairs: string[] = [];
+
+  const startMarker = '<!-- FINAL_QA_START -->';
+  const endMarker = '<!-- FINAL_QA_END -->';
+
+  if (markdown.includes(startMarker) && markdown.includes(endMarker)) {
+    const block = markdown.split(startMarker)[1].split(endMarker)[0];
+
+    const getVal = (key: string): 'PASS' | 'FAIL' => {
+      const match = block.match(new RegExp(`${key}:\\s*(PASS|FAIL)`, 'i'));
+      return match && match[1].toUpperCase() === 'FAIL' ? 'FAIL' : 'PASS';
+    };
+
+    const statusMatch = block.match(/STATUS:\s*(PASS|REPAIR_REQUIRED|FAIL)/i);
+    if (statusMatch) {
+      status = statusMatch[1].toUpperCase() as any;
+    }
+
+    structural = getVal('STRUCTURAL');
+    semantic = getVal('SEMANTIC');
+    seo = getVal('SEO');
+    legal = getVal('LEGAL');
+    technical = getVal('TECHNICAL');
+    implementationReady = getVal('IMPLEMENTATION_READY');
+
+    const critMatch = block.match(/CRITICAL_FINDINGS:\s*([\s\S]*?)(?=(?:FINDINGS|REPAIRS):|$)/i);
+    if (critMatch) {
+      critMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => {
+        const item = l.slice(1).trim();
+        if (item && !['none', 'tidak ada', 'nil', '-'].includes(item.toLowerCase())) {
+          criticalFindings.push(item);
+        }
+      });
+    }
+
+    const findingsMatch = block.match(/FINDINGS:\s*([\s\S]*?)(?=(?:REPAIRS|CRITICAL_FINDINGS):|$)/i);
+    if (findingsMatch) {
+      findingsMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => {
+        const item = l.slice(1).trim();
+        if (item && !['none', 'tidak ada', 'nil', '-'].includes(item.toLowerCase())) {
+          findings.push(item);
+        }
+      });
+    }
+
+    const repairsMatch = block.match(/REPAIRS:\s*([\s\S]*?)$/i);
+    if (repairsMatch) {
+      repairsMatch[1].split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-')).forEach((l) => {
+        const item = l.slice(1).trim();
+        if (item && !['none', 'tidak ada', 'nil', '-'].includes(item.toLowerCase())) {
+          requiredRepairs.push(item);
+        }
+      });
+    }
+
+    if (criticalFindings.length > 0 && status === 'PASS') {
+      status = 'REPAIR_REQUIRED';
+    }
+  } else {
+    status = 'REPAIR_REQUIRED';
+    findings.push('Final QA marker block was missing from output.');
+  }
+
+  return {
+    status,
+    structural,
+    semantic,
+    seo,
+    legal,
+    technical,
+    implementationReady,
+    criticalFindings,
+    findings,
+    requiredRepairs,
     rawMarkdown: markdown,
   };
 }
