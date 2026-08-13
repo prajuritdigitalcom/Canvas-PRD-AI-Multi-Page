@@ -6,6 +6,8 @@ import { markKeyCooldown, markKeyInvalid, markKeySuccess } from './adaptiveCoold
 export interface GeminiRunnerContext {
   keys: string[];
   candidateModels: string[];
+  visitorPoolId?: string;
+  visitorRequestSequence?: number;
   executor: (ai: GoogleGenAI, apiKey: string, model: string) => Promise<any>;
 }
 
@@ -22,14 +24,16 @@ export interface GeminiRunnerResult<T> {
 export async function runGeminiWithVisitorKeys<T>({
   keys,
   candidateModels,
+  visitorPoolId,
+  visitorRequestSequence,
   executor,
 }: GeminiRunnerContext): Promise<GeminiRunnerResult<T>> {
   if (!keys || keys.length === 0) {
     throw new Error('Tidak ada API Key yang tersedia. Masukkan API Key Gemini Anda di menu Gemini API Key.');
   }
 
-  const scheduler = new VisitorKeyScheduler(keys);
-  const poolFingerprint = scheduler.getPoolFingerprint();
+  const scheduler = new VisitorKeyScheduler(keys, visitorPoolId, visitorRequestSequence);
+  const poolId = scheduler.getPoolId();
   const maxAttempts = scheduler.getCandidateCount();
   let lastError: any = null;
 
@@ -54,7 +58,7 @@ export async function runGeminiWithVisitorKeys<T>({
         });
 
         const result = await executor(ai, key, modelCandidate);
-        markKeySuccess(key, poolFingerprint);
+        markKeySuccess(key, poolId);
 
         return {
           data: result,
@@ -65,16 +69,21 @@ export async function runGeminiWithVisitorKeys<T>({
         lastError = err;
         const classified = classifyGeminiError(err);
 
-        console.warn(`[GeminiRunner] Visitor Key ${maskedId} model ${modelCandidate} failed (${classified.type}): ${classified.reason}`);
+        console.warn(
+          `[GeminiRunner] attempt=${attempt + 1} type=${classified.type} status=${classified.statusCode || 500} model=${modelCandidate} key=${maskedId}`
+        );
 
         if (classified.type === 'REQUEST_ERROR') {
           // Bad request (HTTP 400). Do not blame API key or failover endlessly.
           throw new Error(`Permintaan tidak valid: ${classified.reason}`);
+        } else if (classified.type === 'MODEL_ERROR') {
+          // Try next model candidate first if available on same key
+          continue;
         } else if (classified.type === 'PERMANENT') {
-          markKeyInvalid(key, poolFingerprint, classified.reason);
+          markKeyInvalid(key, poolId, classified.reason);
           break; // Failover to next candidate key in this pool
         } else if (classified.type === 'RETRYABLE') {
-          markKeyCooldown(key, poolFingerprint, classified.retryAfterMs, classified.reason);
+          markKeyCooldown(key, poolId, classified.retryAfterMs, classified.reason);
           break; // Failover to next candidate key in this pool
         } else {
           // UNKNOWN error

@@ -168,9 +168,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </button>
                   </div>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                    {visitorApiKeys.map((key) => (
+                    {visitorApiKeys.map((key, idx) => (
                       <div
-                        key={key}
+                        key={`vkey_${idx}_${key.slice(-4)}`}
                         className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
                       >
                         <span className="font-mono text-xs text-slate-700 flex items-center gap-2">

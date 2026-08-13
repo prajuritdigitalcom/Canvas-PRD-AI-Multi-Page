@@ -1,7 +1,7 @@
 import { getKeyState } from './adaptiveCooldown.js';
 import { getPoolFingerprint } from './visitorKeyParser.js';
 
-// Isolated cursor tracking per visitor key pool fingerprint
+// Isolated cursor tracking per visitor pool ID or fingerprint
 const poolCursorMap = new Map<string, number>();
 
 export interface ScheduledKeyOption {
@@ -12,16 +12,27 @@ export interface ScheduledKeyOption {
 export class VisitorKeyScheduler {
   private candidateKeys: string[];
   private attemptedKeys: Set<string>;
-  private poolFingerprint: string;
+  private poolId: string;
+  private requestSequence?: number;
 
-  constructor(keys: string[]) {
-    this.candidateKeys = Array.from(new Set(keys.map((k) => k.trim()).filter(Boolean)));
+  constructor(keys: string[], customPoolId?: string, requestSequence?: number) {
+    // Preserve user order, filter empty/deduplicate
+    const uniqueKeys: string[] = [];
+    for (const k of keys) {
+      const trimmed = k ? k.trim() : '';
+      if (trimmed && !uniqueKeys.includes(trimmed)) {
+        uniqueKeys.push(trimmed);
+      }
+    }
+
+    this.candidateKeys = uniqueKeys;
     this.attemptedKeys = new Set<string>();
-    this.poolFingerprint = getPoolFingerprint(this.candidateKeys);
+    this.poolId = customPoolId && customPoolId.trim() ? customPoolId.trim() : getPoolFingerprint(this.candidateKeys);
+    this.requestSequence = typeof requestSequence === 'number' && requestSequence >= 0 ? requestSequence : undefined;
   }
 
-  public getPoolFingerprint(): string {
-    return this.poolFingerprint;
+  public getPoolId(): string {
+    return this.poolId;
   }
 
   public getCandidateCount(): number {
@@ -31,17 +42,22 @@ export class VisitorKeyScheduler {
   /**
    * Selects the next eligible key using Round Robin for THIS specific pool,
    * skipping keys in COOLDOWN or INVALID within this pool.
-   * Guarantees that each candidate key in the visitor's pool is attempted at most once per request cycle.
+   * Updates cursor to (selectedIndex + 1) % total ONLY after finding the chosen key.
    */
   public getNextEligibleKey(): ScheduledKeyOption | null {
     if (this.candidateKeys.length === 0) return null;
 
     const total = this.candidateKeys.length;
-    const currentCursor = poolCursorMap.get(this.poolFingerprint) || 0;
-    const startOffset = currentCursor % total;
+    let startOffset: number;
 
-    // Advance cursor for THIS pool only
-    poolCursorMap.set(this.poolFingerprint, (currentCursor + 1) % total);
+    const storedCursor = poolCursorMap.get(this.poolId);
+    if (storedCursor !== undefined) {
+      startOffset = storedCursor % total;
+    } else if (this.requestSequence !== undefined) {
+      startOffset = this.requestSequence % total;
+    } else {
+      startOffset = 0;
+    }
 
     for (let i = 0; i < total; i++) {
       const idx = (startOffset + i) % total;
@@ -51,9 +67,11 @@ export class VisitorKeyScheduler {
         continue;
       }
 
-      const state = getKeyState(apiKey, this.poolFingerprint);
+      const state = getKeyState(apiKey, this.poolId);
       if (state.status === 'READY') {
         this.attemptedKeys.add(apiKey);
+        // Advance cursor to the index immediately following the selected key
+        poolCursorMap.set(this.poolId, (idx + 1) % total);
         return { key: apiKey, maskedId: state.maskedId };
       }
     }

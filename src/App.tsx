@@ -11,6 +11,7 @@ import { SettingsView } from './components/SettingsView';
 import { Toast, ToastType } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { PasswordLockModal } from './components/PasswordLockModal';
+import { getVisitorPoolId, incrementVisitorRequestSequence, resetVisitorRequestSequence } from './services/gemini/visitorSession';
 import { Wand2 } from 'lucide-react';
 
 const DEFAULT_PAGES: PageDefinition[] = PAGE_PRESETS[0].pages.map((p, idx) => ({
@@ -108,6 +109,7 @@ export default function App() {
     try {
       sessionStorage.removeItem('canvas_prd_visitor_api_keys');
       sessionStorage.removeItem('canvas_prd_visitor_api_key');
+      resetVisitorRequestSequence();
       setVisitorApiKeys([]);
       showToast('API Key pribadi berhasil dihapus.', 'info');
     } catch (e) {
@@ -187,9 +189,13 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(visitorApiKeys.length > 0 ? { 'x-user-api-keys': JSON.stringify(visitorApiKeys) } : {}),
         },
-        body: JSON.stringify(formState),
+        body: JSON.stringify({
+          ...formState,
+          visitorApiKeys,
+          visitorPoolId: getVisitorPoolId(),
+          visitorRequestSequence: incrementVisitorRequestSequence(),
+        }),
       });
 
       const data = await response.json();

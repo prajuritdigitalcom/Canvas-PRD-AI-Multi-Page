@@ -1,10 +1,17 @@
 import express from 'express';
 import path from 'path';
+import { randomUUID } from 'node:crypto';
 import { Type } from '@google/genai';
 import { buildSystemPrompt, buildUserPrompt, buildAnalysisPrompt } from '../src/prompts/promptTemplates.js';
 import { ProjectFormState, PRDGenerateResponse, BriefAnalysisResponse } from '../src/types.js';
 import { getModelFallbackChain } from '../src/config/aiModel.js';
-import { getVisitorKeysFromRequest, maskApiKey } from '../src/services/gemini/visitorKeyParser.js';
+import {
+  getVisitorKeysFromRequest,
+  getVisitorPoolIdFromRequest,
+  getVisitorRequestSequenceFromRequest,
+  isValidVisitorPoolId,
+  maskApiKey,
+} from '../src/services/gemini/visitorKeyParser.js';
 import { runGeminiWithVisitorKeys } from '../src/services/gemini/geminiRequestRunner.js';
 
 // Vercel serverless function timeout (set to 300 seconds as required)
@@ -24,7 +31,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // Password Lock Configuration
-const EXPECTED_PASSWORD = process.env.PASSWORD || 'adminku2@prajuritdigital.com';
+const EXPECTED_PASSWORD = process.env.PASSWORD;
 
 interface LockoutState {
   failedAttempts: number;
@@ -63,6 +70,14 @@ app.get('/api/check-lock', (req, res) => {
 
 // API: Verify Password
 app.post('/api/verify-password', (req, res) => {
+  if (!EXPECTED_PASSWORD) {
+    return res.status(400).json({
+      success: false,
+      isLocked: false,
+      message: 'Sistem penguncian password belum dikonfigurasi di server (variabel PASSWORD belum diisi).',
+    });
+  }
+
   const { password } = req.body || {};
   const clientIp = getClientIp(req);
   const now = Date.now();
@@ -85,7 +100,7 @@ app.post('/api/verify-password', (req, res) => {
 
   if (typeof password === 'string' && password.trim() === EXPECTED_PASSWORD) {
     ipLockoutMap.delete(clientIp);
-    const sessionToken = Buffer.from(`auth_${Date.now()}_${Math.random()}`).toString('base64');
+    const sessionToken = `auth_${randomUUID()}`;
     return res.json({
       success: true,
       message: 'Password benar! Website dibuka.',
@@ -185,13 +200,17 @@ app.post('/api/validate-keys', async (req, res) => {
 // API: Analyze Brief (Auto Mode)
 app.post('/api/analyze-brief', async (req, res) => {
   try {
-    const { rawBrief } = req.body;
+    const { rawBrief, visitorPoolId: customPoolId } = req.body;
     if (!rawBrief || typeof rawBrief !== 'string') {
       return res.status(400).json({ error: 'Brief mentah wajib diisi.' });
     }
 
     if (rawBrief.length > 10000) {
       return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 10000 karakter). Mohon persingkat brief Anda.' });
+    }
+
+    if (customPoolId && !isValidVisitorPoolId(customPoolId)) {
+      return res.status(400).json({ error: 'Format visitorPoolId tidak valid.' });
     }
 
     const visitorKeys = getVisitorKeysFromRequest(req);
@@ -201,12 +220,16 @@ app.post('/api/analyze-brief', async (req, res) => {
       });
     }
 
+    const visitorPoolId = getVisitorPoolIdFromRequest(req, visitorKeys);
+    const visitorRequestSequence = getVisitorRequestSequenceFromRequest(req);
     const candidateModels = getModelFallbackChain();
     const prompt = buildAnalysisPrompt(rawBrief);
 
     const runnerResult = await runGeminiWithVisitorKeys<string>({
       keys: visitorKeys,
       candidateModels,
+      visitorPoolId,
+      visitorRequestSequence,
       executor: async (ai, apiKey, modelCandidate) => {
         const response = await ai.models.generateContent({
           model: modelCandidate,
@@ -267,7 +290,7 @@ app.post('/api/analyze-brief', async (req, res) => {
       data: parsed,
     });
   } catch (err: any) {
-    console.error('Error analyzing brief:', err?.message || err);
+    console.error('Error analyzing brief:', err?.message || 'terjadi kesalahan');
     return res.status(500).json({ error: err.message || 'Gagal menganalisis brief mentah.' });
   }
 });
@@ -289,6 +312,10 @@ app.post('/api/generate-prd', async (req, res) => {
       return res.status(400).json({ error: 'Brief mentah terlalu panjang (maksimal 10000 karakter).' });
     }
 
+    if (req.body?.visitorPoolId && !isValidVisitorPoolId(req.body.visitorPoolId)) {
+      return res.status(400).json({ error: 'Format visitorPoolId tidak valid.' });
+    }
+
     const visitorKeys = getVisitorKeysFromRequest(req);
     if (visitorKeys.length === 0) {
       return res.status(400).json({
@@ -296,6 +323,8 @@ app.post('/api/generate-prd', async (req, res) => {
       });
     }
 
+    const visitorPoolId = getVisitorPoolIdFromRequest(req, visitorKeys);
+    const visitorRequestSequence = getVisitorRequestSequenceFromRequest(req);
     const candidateModels = getModelFallbackChain();
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(formState);
@@ -303,6 +332,8 @@ app.post('/api/generate-prd', async (req, res) => {
     const runnerResult = await runGeminiWithVisitorKeys<string>({
       keys: visitorKeys,
       candidateModels,
+      visitorPoolId,
+      visitorRequestSequence,
       executor: async (ai, apiKey, modelCandidate) => {
         const response = await ai.models.generateContent({
           model: modelCandidate,
@@ -384,7 +415,7 @@ app.post('/api/generate-prd', async (req, res) => {
 
     return res.json(responseData);
   } catch (err: any) {
-    console.error('Error generating PRD:', err);
+    console.error('Error generating PRD:', err?.message || 'terjadi kesalahan');
     return res.status(500).json({ error: err.message || 'Gagal menghasilkan PRD.' });
   }
 });

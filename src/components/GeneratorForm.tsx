@@ -5,6 +5,7 @@ import { SharedLayoutForm } from './SharedLayoutForm';
 import { ThemeFoundationSelector } from './ThemeFoundationSelector';
 import { SAMPLE_PROJECTS } from '../data/sampleProject';
 import { extractGoogleSiteVerification } from '../utils/seo';
+import { getVisitorPoolId, incrementVisitorRequestSequence } from '../services/gemini/visitorSession';
 import {
   Sparkles,
   Building2,
@@ -65,9 +66,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(visitorApiKeys.length > 0 ? { 'x-user-api-keys': JSON.stringify(visitorApiKeys) } : {}),
         },
-        body: JSON.stringify({ rawBrief: formState.rawBrief }),
+        body: JSON.stringify({
+          rawBrief: formState.rawBrief,
+          visitorApiKeys,
+          visitorPoolId: getVisitorPoolId(),
+          visitorRequestSequence: incrementVisitorRequestSequence(),
+        }),
       });
 
       const resData = await response.json();

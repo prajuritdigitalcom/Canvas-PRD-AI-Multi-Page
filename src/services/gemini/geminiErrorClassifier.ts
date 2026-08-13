@@ -1,4 +1,4 @@
-export type GeminiErrorType = 'PERMANENT' | 'RETRYABLE' | 'REQUEST_ERROR' | 'UNKNOWN';
+export type GeminiErrorType = 'PERMANENT' | 'RETRYABLE' | 'REQUEST_ERROR' | 'MODEL_ERROR' | 'UNKNOWN';
 
 export interface ClassifiedError {
   type: GeminiErrorType;
@@ -24,17 +24,15 @@ export function classifyGeminiError(error: any): ClassifiedError {
     }
   }
 
-  // Check for Permanent errors (Invalid API key / Unauthorized / Forbidden)
-  const isPermanent =
-    status === 401 ||
-    status === 403 ||
+  // 1. Check for explicit Permanent API key errors (401, or 403 with explicit invalid key message)
+  const isExplicitInvalidKeyMsg =
     msg.includes('api_key_invalid') ||
     msg.includes('api key not valid') ||
     msg.includes('invalid api key') ||
-    msg.includes('unauthorized') ||
-    msg.includes('forbidden');
+    msg.includes('api_key_not_found') ||
+    msg.includes('unauthorized');
 
-  if (isPermanent) {
+  if (status === 401 || (status === 403 && isExplicitInvalidKeyMsg) || isExplicitInvalidKeyMsg) {
     return {
       type: 'PERMANENT',
       reason: 'API Key tidak valid atau tidak memiliki akses.',
@@ -43,7 +41,23 @@ export function classifyGeminiError(error: any): ClassifiedError {
     };
   }
 
-  // Check for Request errors (HTTP 400, bad prompt, malformed arguments)
+  // 2. Check for Model errors (HTTP 404 or model not found / model unavailable)
+  const isModelError =
+    status === 404 ||
+    msg.includes('model not found') ||
+    msg.includes('models/') ||
+    msg.includes('is not found for api version');
+
+  if (isModelError) {
+    return {
+      type: 'MODEL_ERROR',
+      reason: 'Model AI tidak ditemukan atau tidak tersedia.',
+      statusCode: 404,
+      retryAfterMs: null,
+    };
+  }
+
+  // 3. Check for Request errors (HTTP 400, bad prompt, malformed arguments)
   const isRequestError =
     status === 400 ||
     msg.includes('invalid_argument') ||
@@ -59,7 +73,7 @@ export function classifyGeminiError(error: any): ClassifiedError {
     };
   }
 
-  // Check for Retryable / Failover errors (429 Rate Limit / Quota, 5xx Server Errors, Network Failures)
+  // 4. Check for Retryable / Failover errors (429 Rate Limit / Quota, 5xx Server Errors, Network Failures, generic 403)
   const isRateLimitOrQuota =
     status === 429 ||
     msg.includes('resource_exhausted') ||
@@ -67,8 +81,9 @@ export function classifyGeminiError(error: any): ClassifiedError {
     msg.includes('quota') ||
     msg.includes('too many requests');
 
-  const isServerError =
+  const isServerErrorOrGeneric403 =
     status >= 500 ||
+    status === 403 ||
     msg.includes('500') ||
     msg.includes('502') ||
     msg.includes('503') ||
@@ -80,12 +95,12 @@ export function classifyGeminiError(error: any): ClassifiedError {
     msg.includes('fetch failed') ||
     msg.includes('network');
 
-  if (isRateLimitOrQuota || isServerError) {
+  if (isRateLimitOrQuota || isServerErrorOrGeneric403) {
     return {
       type: 'RETRYABLE',
       reason: isRateLimitOrQuota
         ? 'Batas kuota/rate limit tercapai (429).'
-        : 'Server Google sedang sibuk / kendala jaringan.',
+        : 'Server Google sedang sibuk / kendala jaringan (5xx/403).',
       statusCode: status || (isRateLimitOrQuota ? 429 : 503),
       retryAfterMs,
     };
