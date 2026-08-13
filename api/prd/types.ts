@@ -152,6 +152,7 @@ export interface CrossPageQALock {
   findings: string[];
   requiredRepairs: string[];
   rawMarkdown: string;
+  parseValid?: boolean;
 }
 
 export interface FinalQALock {
@@ -166,6 +167,7 @@ export interface FinalQALock {
   findings: string[];
   requiredRepairs: string[];
   rawMarkdown: string;
+  parseValid?: boolean;
 }
 
 export interface PRDContextState {

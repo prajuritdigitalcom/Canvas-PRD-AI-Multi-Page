@@ -54,6 +54,8 @@ export function calculatePRDQualityScore(
   // 6. Cross-Page Consistency (15%)
   let crossPageScore = 15;
   let crossPagePass = true;
+  const crossPageParseValid = state.crossPageQA?.parseValid !== false;
+
   if (state.crossPageQA) {
     const checks = [
       state.crossPageQA.navigationConsistency,
@@ -175,10 +177,32 @@ export function calculatePRDQualityScore(
 
   const allPagesValid = totalPages > 0 && generatedPageLocks.length === totalPages && generatedPageLocks.every((p) => p.markdown && p.sectionNames.length > 0 && p.validation?.isValid !== false);
   const masterPromptPass = /Final Instruction For Google AI Studio|MASTER PROMPT/i.test(markdown);
-  const finalQAPass = !state.finalQA || (state.finalQA.status !== 'FAIL' && state.finalQA.criticalFindings.length === 0);
+  const finalQAPass =
+    !!state.finalQA &&
+    state.finalQA.status === 'PASS' &&
+    state.finalQA.criticalFindings.length === 0 &&
+    state.finalQA.implementationReady === 'PASS' &&
+    state.finalQA.parseValid !== false;
   const zeroCriticalFindings = (state.crossPageQA?.criticalFindings?.length || 0) === 0 && (state.finalQA?.criticalFindings?.length || 0) === 0;
 
-  const isBuildReady = readyScore >= 94 && structVal.isValid && allPagesValid && seoLockValid && seoLegalVal.isValid && crossPagePass && masterPromptPass && finalQAPass && zeroCriticalFindings;
+  const generatedChunkList = Object.values(state.generatedChunks);
+  const allRequiredFoundationChunksValid =
+    generatedChunkList.length > 0 &&
+    generatedChunkList.every((c) => c.status !== 'FAILED' && c.validation?.isValid !== false);
+
+  const isBuildReady =
+    readyScore >= 94 &&
+    structVal.isValid &&
+    markVal.isValid &&
+    allPagesValid &&
+    seoLockValid &&
+    seoLegalVal.isValid &&
+    crossPagePass &&
+    crossPageParseValid &&
+    masterPromptPass &&
+    finalQAPass &&
+    zeroCriticalFindings &&
+    allRequiredFoundationChunksValid;
 
   return {
     readyScore,

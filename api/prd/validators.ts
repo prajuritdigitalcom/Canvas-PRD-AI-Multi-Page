@@ -155,19 +155,20 @@ export function validateFoundationChunk(chunkKey: string, markdown: string): Val
 }
 
 export function parseCrossPageQAChunkToLock(markdown: string): CrossPageQALock {
-  let nav = 'PASS';
-  let term = 'PASS';
-  let cta = 'PASS';
-  let design = 'PASS';
-  let shared = 'PASS';
-  let links = 'PASS';
-  let dups = 'PASS';
-  let role = 'PASS';
-  let seo = 'PASS';
-  let resp = 'PASS';
-  let conv = 'PASS';
-  let routing = 'PASS';
+  let nav = 'FAIL';
+  let term = 'FAIL';
+  let cta = 'FAIL';
+  let design = 'FAIL';
+  let shared = 'FAIL';
+  let links = 'FAIL';
+  let dups = 'FAIL';
+  let role = 'FAIL';
+  let seo = 'FAIL';
+  let resp = 'FAIL';
+  let conv = 'FAIL';
+  let routing = 'FAIL';
 
+  let parseValid = true;
   const criticalFindings: string[] = [];
   const findings: string[] = [];
   const repairs: string[] = [];
@@ -175,26 +176,37 @@ export function parseCrossPageQAChunkToLock(markdown: string): CrossPageQALock {
   const startMarker = '<!-- CROSS_PAGE_QA_START -->';
   const endMarker = '<!-- CROSS_PAGE_QA_END -->';
 
-  if (markdown.includes(startMarker) && markdown.includes(endMarker)) {
+  if (markdown && markdown.includes(startMarker) && markdown.includes(endMarker)) {
     const block = markdown.split(startMarker)[1].split(endMarker)[0];
 
-    const getVal = (key: string) => {
+    const getVal = (key: string): string | null => {
       const match = block.match(new RegExp(`${key}:\\s*(PASS|WARNING|FAIL)`, 'i'));
-      return match ? match[1].toUpperCase() : 'PASS';
+      return match ? match[1].toUpperCase() : null;
     };
 
-    nav = getVal('NAVIGATION');
-    term = getVal('TERMINOLOGY');
-    cta = getVal('CTA');
-    design = getVal('DESIGN_TOKENS');
-    shared = getVal('SHARED_COMPONENTS');
-    links = getVal('INTERNAL_LINKS');
-    dups = getVal('DUPLICATION');
-    role = getVal('PAGE_ROLE_SEPARATION');
-    seo = getVal('SEO');
-    resp = getVal('RESPONSIVE');
-    conv = getVal('CONVERSION_FLOW');
-    routing = getVal('ROUTING');
+    const requiredKeys: Array<{ key: string; assign: (v: string) => void }> = [
+      { key: 'NAVIGATION', assign: (v) => (nav = v) },
+      { key: 'TERMINOLOGY', assign: (v) => (term = v) },
+      { key: 'CTA', assign: (v) => (cta = v) },
+      { key: 'DESIGN_TOKENS', assign: (v) => (design = v) },
+      { key: 'SHARED_COMPONENTS', assign: (v) => (shared = v) },
+      { key: 'INTERNAL_LINKS', assign: (v) => (links = v) },
+      { key: 'DUPLICATION', assign: (v) => (dups = v) },
+      { key: 'PAGE_ROLE_SEPARATION', assign: (v) => (role = v) },
+      { key: 'SEO', assign: (v) => (seo = v) },
+      { key: 'RESPONSIVE', assign: (v) => (resp = v) },
+      { key: 'CONVERSION_FLOW', assign: (v) => (conv = v) },
+      { key: 'ROUTING', assign: (v) => (routing = v) },
+    ];
+
+    for (const item of requiredKeys) {
+      const val = getVal(item.key);
+      if (val) {
+        item.assign(val);
+      } else {
+        parseValid = false;
+      }
+    }
 
     const critMatch = block.match(/CRITICAL_FINDINGS:\s*([\s\S]*?)(?=(?:FINDINGS|REPAIRS):|$)/i);
     if (critMatch) {
@@ -225,6 +237,8 @@ export function parseCrossPageQAChunkToLock(markdown: string): CrossPageQALock {
         }
       });
     }
+  } else {
+    parseValid = false;
   }
 
   return {
@@ -244,18 +258,20 @@ export function parseCrossPageQAChunkToLock(markdown: string): CrossPageQALock {
     findings,
     requiredRepairs: repairs,
     rawMarkdown: markdown,
+    parseValid,
   };
 }
 
 export function parseFinalQAChunkToLock(markdown: string): FinalQALock {
-  let status: 'PASS' | 'REPAIR_REQUIRED' | 'FAIL' = 'PASS';
-  let structural: 'PASS' | 'FAIL' = 'PASS';
-  let semantic: 'PASS' | 'FAIL' = 'PASS';
-  let seo: 'PASS' | 'FAIL' = 'PASS';
-  let legal: 'PASS' | 'FAIL' = 'PASS';
-  let technical: 'PASS' | 'FAIL' = 'PASS';
-  let implementationReady: 'PASS' | 'FAIL' = 'PASS';
+  let status: 'PASS' | 'REPAIR_REQUIRED' | 'FAIL' = 'FAIL';
+  let structural: 'PASS' | 'FAIL' = 'FAIL';
+  let semantic: 'PASS' | 'FAIL' = 'FAIL';
+  let seo: 'PASS' | 'FAIL' = 'FAIL';
+  let legal: 'PASS' | 'FAIL' = 'FAIL';
+  let technical: 'PASS' | 'FAIL' = 'FAIL';
+  let implementationReady: 'PASS' | 'FAIL' = 'FAIL';
 
+  let parseValid = true;
   const criticalFindings: string[] = [];
   const findings: string[] = [];
   const requiredRepairs: string[] = [];
@@ -263,25 +279,40 @@ export function parseFinalQAChunkToLock(markdown: string): FinalQALock {
   const startMarker = '<!-- FINAL_QA_START -->';
   const endMarker = '<!-- FINAL_QA_END -->';
 
-  if (markdown.includes(startMarker) && markdown.includes(endMarker)) {
+  if (markdown && markdown.includes(startMarker) && markdown.includes(endMarker)) {
     const block = markdown.split(startMarker)[1].split(endMarker)[0];
 
-    const getVal = (key: string): 'PASS' | 'FAIL' => {
+    const getVal = (key: string): 'PASS' | 'FAIL' | null => {
       const match = block.match(new RegExp(`${key}:\\s*(PASS|FAIL)`, 'i'));
-      return match && match[1].toUpperCase() === 'FAIL' ? 'FAIL' : 'PASS';
+      if (!match) return null;
+      return match[1].toUpperCase() as 'PASS' | 'FAIL';
     };
 
     const statusMatch = block.match(/STATUS:\s*(PASS|REPAIR_REQUIRED|FAIL)/i);
     if (statusMatch) {
       status = statusMatch[1].toUpperCase() as any;
+    } else {
+      parseValid = false;
+      status = 'REPAIR_REQUIRED';
     }
 
-    structural = getVal('STRUCTURAL');
-    semantic = getVal('SEMANTIC');
-    seo = getVal('SEO');
-    legal = getVal('LEGAL');
-    technical = getVal('TECHNICAL');
-    implementationReady = getVal('IMPLEMENTATION_READY');
+    const requiredKeys: Array<{ key: string; assign: (v: 'PASS' | 'FAIL') => void }> = [
+      { key: 'STRUCTURAL', assign: (v) => (structural = v) },
+      { key: 'SEMANTIC', assign: (v) => (semantic = v) },
+      { key: 'SEO', assign: (v) => (seo = v) },
+      { key: 'LEGAL', assign: (v) => (legal = v) },
+      { key: 'TECHNICAL', assign: (v) => (technical = v) },
+      { key: 'IMPLEMENTATION_READY', assign: (v) => (implementationReady = v) },
+    ];
+
+    for (const item of requiredKeys) {
+      const v = getVal(item.key);
+      if (v) {
+        item.assign(v);
+      } else {
+        parseValid = false;
+      }
+    }
 
     const critMatch = block.match(/CRITICAL_FINDINGS:\s*([\s\S]*?)(?=(?:FINDINGS|REPAIRS):|$)/i);
     if (critMatch) {
@@ -313,10 +344,15 @@ export function parseFinalQAChunkToLock(markdown: string): FinalQALock {
       });
     }
 
+    if (!parseValid && status === 'PASS') {
+      status = 'REPAIR_REQUIRED';
+    }
+
     if (criticalFindings.length > 0 && status === 'PASS') {
       status = 'REPAIR_REQUIRED';
     }
   } else {
+    parseValid = false;
     status = 'REPAIR_REQUIRED';
     findings.push('Final QA marker block was missing from output.');
   }
@@ -333,6 +369,7 @@ export function parseFinalQAChunkToLock(markdown: string): FinalQALock {
     findings,
     requiredRepairs,
     rawMarkdown: markdown,
+    parseValid,
   };
 }
 

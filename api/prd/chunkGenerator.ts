@@ -139,38 +139,60 @@ export async function generateMultiPagePRDPipeline(
     systemPrompt: string,
     userPrompt: string
   ): Promise<string> => {
-    let output = await runChunkGeneration(chunkKey, systemPrompt, userPrompt);
-    let valResult = validateFoundationChunk(chunkKey, output);
-    let attempt = 1;
+    const firstOutput = await runChunkGeneration(chunkKey, systemPrompt, userPrompt);
+    const firstVal = validateFoundationChunk(chunkKey, firstOutput);
 
-    if (!valResult.isValid) {
-      const feedbackPrompt = `${userPrompt}
+    if (firstVal.isValid) {
+      console.log(`[PRD] STAGE ${stageNumber} ${chunkKey} → VALID`);
+      contextState.generatedChunks[chunkKey] = {
+        chunkKey,
+        stageNumber,
+        markdown: firstOutput,
+        summary: firstOutput.slice(0, 150),
+        status: 'VALIDATED',
+        attempt: 1,
+        validation: firstVal,
+      };
+      return firstOutput;
+    }
+
+    console.log(`[PRD] STAGE ${stageNumber} ${chunkKey} → INVALID (Attempt 1), retrying...`);
+    const feedbackPrompt = `${userPrompt}
 
 PREVIOUS ATTEMPT FAILED VALIDATION REASONS:
-${valResult.issues.map((i) => `- ${i.message}`).join('\n')}
+${firstVal.issues.map((i) => `- ${i.message}`).join('\n')}
 
 PLEASE REPAIR AND RETURN THE COMPLETE CORRECTED SECTION.`;
 
-      const retryOutput = await runChunkGeneration(chunkKey, systemPrompt, feedbackPrompt);
-      const retryVal = validateFoundationChunk(chunkKey, retryOutput);
-      attempt = 2;
-      if (retryVal.isValid || retryOutput.length > output.length) {
-        output = retryOutput;
-        valResult = retryVal;
-      }
+    const retryOutput = await runChunkGeneration(chunkKey, systemPrompt, feedbackPrompt);
+    const retryVal = validateFoundationChunk(chunkKey, retryOutput);
+
+    if (retryVal.isValid) {
+      console.log(`[PRD] STAGE ${stageNumber} ${chunkKey} → VALID (Attempt 2)`);
+      contextState.generatedChunks[chunkKey] = {
+        chunkKey,
+        stageNumber,
+        markdown: retryOutput,
+        summary: retryOutput.slice(0, 150),
+        status: 'VALIDATED',
+        attempt: 2,
+        validation: retryVal,
+      };
+      return retryOutput;
     }
 
+    console.log(`[PRD] STAGE ${stageNumber} ${chunkKey} → FAILED (Attempt 2)`);
     contextState.generatedChunks[chunkKey] = {
       chunkKey,
       stageNumber,
-      markdown: output,
-      summary: output.slice(0, 150),
-      status: valResult.isValid ? 'VALIDATED' : 'FAILED',
-      attempt,
-      validation: valResult,
+      markdown: retryOutput || firstOutput,
+      summary: (retryOutput || firstOutput).slice(0, 150),
+      status: 'FAILED',
+      attempt: 2,
+      validation: retryVal,
     };
 
-    return output;
+    return retryOutput || firstOutput;
   };
 
   // STAGE 1: BUSINESS STRATEGY
@@ -300,11 +322,13 @@ Key Sections: ${(page.keySections || []).join(', ')}
   const finalQAOutput = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_FINAL_DOCUMENT_QA, finalQASysPrompt, finalQAUserPrompt);
   contextState.finalQA = parseFinalQAChunkToLock(finalQAOutput);
   contextState.completedStages.push('Final Document QA Audit');
+  console.log(`[PRD] STAGE 10 FINAL QA → ${contextState.finalQA?.status || 'FAIL'}`);
 
   let qualityResult = calculatePRDQualityScore(finalMarkdown, contextState);
 
   // STAGE 11: SURGICAL REPAIR PASS WITH STATE RETENTION RULE (NO slice(0, 8000)!)
   if (!qualityResult.isBuildReady || (contextState.finalQA && contextState.finalQA.status !== 'PASS')) {
+    console.log('[PRD] STAGE 11 REPAIR → APPLIED');
     const invalidPageIds = Object.keys(contextState.generatedPages).filter(
       (pId) => !contextState.generatedPages[pId].validation?.isValid || !contextState.generatedPages[pId].markdown
     );
@@ -347,9 +371,14 @@ Key Sections: ${(pageDef.keySections || []).join(', ')}
     const reQAUserPrompt = buildFinalDocumentQAUserPrompt(finalMarkdown, contextState);
     const reQAOutput = await runChunkGeneration(PRD_CHUNK_KEYS.CHUNK_FINAL_DOCUMENT_QA, finalQASysPrompt, reQAUserPrompt);
     contextState.finalQA = parseFinalQAChunkToLock(reQAOutput);
+    console.log(`[PRD] STAGE 12 FINAL QA → ${contextState.finalQA?.status || 'FAIL'}`);
 
     qualityResult = calculatePRDQualityScore(finalMarkdown, contextState);
+  } else {
+    console.log('[PRD] STAGE 11 REPAIR → SKIPPED');
   }
+
+  console.log(`[PRD] BUILD READY → ${qualityResult.isBuildReady ? 'TRUE' : 'FALSE'} (Score: ${qualityResult.readyScore})`);
 
   return {
     markdown: finalMarkdown,

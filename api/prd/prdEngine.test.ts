@@ -168,10 +168,10 @@ Master prompt content
         purpose: 'Main landing page',
         complexityScore: 5,
         complexityTier: 'MEDIUM',
-        markdown: '### Halaman: Home (/)\nMeta Title: Home\nMeta Description: Desc\nSection 1: Hero\nWCAG Accessibility: Alt text provided.',
+        markdown: '### Halaman: Home (/)\nMeta Title: Home Page Title\nMeta Description: Deskripsi halaman utama platform kami.\nSection 1: Hero\nWCAG Accessibility: Alt text provided.',
         sectionNames: ['Hero'],
-        metaTitle: 'Home',
-        metaDescription: 'Desc',
+        metaTitle: 'Home Page Title',
+        metaDescription: 'Deskripsi halaman utama platform kami.',
         internalLinks: ['/tentang-kami'],
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -183,10 +183,10 @@ Master prompt content
         purpose: 'Company story',
         complexityScore: 4,
         complexityTier: 'SIMPLE',
-        markdown: '### Halaman: Tentang Kami (/tentang-kami)\nMeta Title: About\nMeta Description: Desc\nSection 1: Story\nWCAG Accessibility: Alt text provided.',
+        markdown: '### Halaman: Tentang Kami (/tentang-kami)\nMeta Title: About Us Page Title\nMeta Description: Deskripsi profil lengkap perusahaan kami.\nSection 1: Story\nWCAG Accessibility: Alt text provided.',
         sectionNames: ['Story'],
-        metaTitle: 'About',
-        metaDescription: 'Desc',
+        metaTitle: 'About Us Page Title',
+        metaDescription: 'Deskripsi profil lengkap perusahaan kami.',
         internalLinks: ['/layanan'],
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -198,10 +198,10 @@ Master prompt content
         purpose: 'List of services',
         complexityScore: 4,
         complexityTier: 'SIMPLE',
-        markdown: '### Halaman: Layanan (/tentang-kami-1)\nMeta Title: Services\nMeta Description: Desc\nSection 1: Grid\nWCAG Accessibility: Alt text provided.',
+        markdown: '### Halaman: Layanan (/tentang-kami-1)\nMeta Title: Services Page Title\nMeta Description: Deskripsi seluruh daftar layanan unggulan kami.\nSection 1: Grid\nWCAG Accessibility: Alt text provided.',
         sectionNames: ['Grid'],
-        metaTitle: 'Services',
-        metaDescription: 'Desc',
+        metaTitle: 'Services Page Title',
+        metaDescription: 'Deskripsi seluruh daftar layanan unggulan kami.',
         internalLinks: ['/'],
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -210,9 +210,9 @@ Master prompt content
       [PRD_CHUNK_KEYS.CHUNK_1_BUSINESS]: {
         chunkKey: PRD_CHUNK_KEYS.CHUNK_1_BUSINESS,
         stageNumber: 1,
-        markdown: '## Executive Summary\nExecutive summary...\n## Problem Statement\nProblem statement...\n## Target Audience\nTarget audience...',
+        markdown: '## Executive Summary\nExecutive summary...\n## Business Overview\nBusiness overview...\n## Problem Statement\nProblem statement...\n## Target Audience\nTarget audience...',
         summary: 'Business',
-        status: 'GENERATED',
+        status: 'VALIDATED',
         attempt: 1,
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -221,7 +221,7 @@ Master prompt content
         stageNumber: 2,
         markdown: '## Sitemap\nSitemap...\n## User Flow\nUser Flow...',
         summary: 'Arch',
-        status: 'GENERATED',
+        status: 'VALIDATED',
         attempt: 1,
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -230,7 +230,7 @@ Master prompt content
         stageNumber: 3,
         markdown: '## Global Design Direction\nSkala Tipografi...\nPasangan Kontras Warna...\nAturan Larangan...',
         summary: 'Design',
-        status: 'GENERATED',
+        status: 'VALIDATED',
         attempt: 1,
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -239,7 +239,7 @@ Master prompt content
         stageNumber: 4,
         markdown: '## Shared Layout\nNavbar & Footer...',
         summary: 'Layout',
-        status: 'GENERATED',
+        status: 'VALIDATED',
         attempt: 1,
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -248,16 +248,16 @@ Master prompt content
         stageNumber: 5,
         markdown: '## SEO Strategy\nGlobal SEO rules...',
         summary: 'SEO',
-        status: 'GENERATED',
+        status: 'VALIDATED',
         attempt: 1,
         validation: { isValid: true, issues: [], warnings: [] },
       },
       [PRD_CHUNK_KEYS.CHUNK_6_LEGAL_TECHNICAL]: {
         chunkKey: PRD_CHUNK_KEYS.CHUNK_6_LEGAL_TECHNICAL,
         stageNumber: 7,
-        markdown: '## Syarat & Ketentuan\nTerms...\n## Kebijakan Privasi\nPrivacy...\n## Technical Notes for Google AI Studio\nVercel GitHub...',
+        markdown: '## Syarat & Ketentuan\nTerms...\n## Kebijakan Privasi\nPrivacy...\n## Technical Notes\nVercel GitHub WCAG Accessibility Alt text...',
         summary: 'LegalTech',
-        status: 'GENERATED',
+        status: 'VALIDATED',
         attempt: 1,
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -266,7 +266,7 @@ Master prompt content
         stageNumber: 8,
         markdown: '## Cross-Page QA\nQA Audit Passed...',
         summary: 'QA',
-        status: 'GENERATED',
+        status: 'VALIDATED',
         attempt: 1,
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -275,7 +275,7 @@ Master prompt content
         stageNumber: 9,
         markdown: '## Final Instruction For Google AI Studio\nMaster Prompt...',
         summary: 'MasterPrompt',
-        status: 'GENERATED',
+        status: 'VALIDATED',
         attempt: 1,
         validation: { isValid: true, issues: [], warnings: [] },
       },
@@ -426,10 +426,96 @@ REPAIRS:
 <!-- FINAL_QA_END -->
 `;
   const parsedFinalQA = parseFinalQAChunkToLock(finalQAMarkdown);
-  if (parsedFinalQA.status !== 'PASS' || parsedFinalQA.implementationReady !== 'PASS') {
+  if (parsedFinalQA.status !== 'PASS' || parsedFinalQA.implementationReady !== 'PASS' || parsedFinalQA.parseValid !== true) {
     throw new Error('Test Failed: Final QA marker parsing failed!');
   }
   console.log('✓ Final QA Lock Parsing Test Passed');
+
+  // 12. Regression Test: Cross-Page QA Missing Field Must Fail (parseValid === false)
+  const missingFieldQAMarkdown = `
+<!-- CROSS_PAGE_QA_START -->
+NAVIGATION: PASS
+CTA: PASS
+SEO: PASS
+<!-- CROSS_PAGE_QA_END -->
+`;
+  const parsedMissingQA = parseCrossPageQAChunkToLock(missingFieldQAMarkdown);
+  if (parsedMissingQA.parseValid !== false) {
+    throw new Error('Test Failed: Cross-Page QA missing required fields should set parseValid to false!');
+  }
+  console.log('✓ Cross-Page QA Missing Field Test Passed');
+
+  // 13. Regression Test: Cross-Page QA Missing Markers Must Fail
+  const missingMarkerQAMarkdown = `
+NAVIGATION: PASS
+TERMINOLOGY: PASS
+`;
+  const parsedNoMarkerQA = parseCrossPageQAChunkToLock(missingMarkerQAMarkdown);
+  if (parsedNoMarkerQA.parseValid !== false) {
+    throw new Error('Test Failed: Cross-Page QA missing start/end markers should set parseValid to false!');
+  }
+  console.log('✓ Cross-Page QA Missing Markers Test Passed');
+
+  // 14. Regression Test: Final QA Missing Required Fields Must Fail
+  const missingFinalQAFieldMarkdown = `
+<!-- FINAL_QA_START -->
+STATUS: PASS
+<!-- FINAL_QA_END -->
+`;
+  const parsedMissingFinalQA = parseFinalQAChunkToLock(missingFinalQAFieldMarkdown);
+  if (parsedMissingFinalQA.parseValid !== false || parsedMissingFinalQA.status === 'PASS') {
+    throw new Error('Test Failed: Final QA missing required fields should set parseValid to false and status not PASS!');
+  }
+  console.log('✓ Final QA Missing Required Fields Test Passed');
+
+  // 15. Regression Test: Final QA REPAIR_REQUIRED Must Not Be Build Ready
+  const stateWithRepairRequiredQA: PRDContextState = {
+    ...mockState,
+    crossPageQA: parsedQA,
+    finalQA: {
+      status: 'REPAIR_REQUIRED',
+      structural: 'PASS',
+      semantic: 'PASS',
+      seo: 'PASS',
+      legal: 'PASS',
+      technical: 'PASS',
+      implementationReady: 'FAIL',
+      criticalFindings: [],
+      findings: ['Needs repair'],
+      requiredRepairs: ['Fix section'],
+      rawMarkdown: '...',
+      parseValid: true,
+    },
+  };
+  const scoreResultRepairReq = calculatePRDQualityScore(assembled, stateWithRepairRequiredQA);
+  if (scoreResultRepairReq.isBuildReady !== false) {
+    throw new Error('Test Failed: finalQA status REPAIR_REQUIRED must NOT be Build Ready!');
+  }
+  console.log('✓ Final QA REPAIR_REQUIRED Hard Gate Test Passed');
+
+  // 16. Regression Test: Missing Final QA Must Not Be Build Ready
+  const stateWithNoFinalQA: PRDContextState = {
+    ...mockState,
+    crossPageQA: parsedQA,
+    finalQA: undefined,
+  };
+  const scoreResultNoFinalQA = calculatePRDQualityScore(assembled, stateWithNoFinalQA);
+  if (scoreResultNoFinalQA.isBuildReady !== false) {
+    throw new Error('Test Failed: Missing finalQA must NOT be Build Ready!');
+  }
+  console.log('✓ Missing Final QA Hard Gate Test Passed');
+
+  // 17. Regression Test: Build Ready Hard Gate Passed when Final QA is PASS
+  const stateWithPassFinalQA: PRDContextState = {
+    ...mockState,
+    crossPageQA: parsedQA,
+    finalQA: parsedFinalQA,
+  };
+  const scoreResultPass = calculatePRDQualityScore(assembled, stateWithPassFinalQA);
+  if (scoreResultPass.readyScore < 94 || !scoreResultPass.isBuildReady) {
+    throw new Error(`Test Failed: Fully verified state with Final QA PASS should be Build Ready! Score: ${scoreResultPass.readyScore}`);
+  }
+  console.log('✓ Final QA PASS Build Ready Hard Gate Test Passed');
 
   console.log('ALL PRD ENGINE TESTS PASSED SUCCESSFULLY!');
 }
