@@ -13,6 +13,7 @@ import {
   maskApiKey,
 } from '../src/services/gemini/visitorKeyParser.js';
 import { runGeminiWithVisitorKeys } from '../src/services/gemini/geminiRequestRunner.js';
+import { generateMultiPagePRDPipeline } from './prd/chunkGenerator.js';
 
 // Vercel serverless function timeout (set to 300 seconds as required)
 export const maxDuration = 300;
@@ -325,95 +326,15 @@ app.post('/api/generate-prd', async (req, res) => {
 
     const visitorPoolId = getVisitorPoolIdFromRequest(req, visitorKeys);
     const visitorRequestSequence = getVisitorRequestSequenceFromRequest(req);
-    const candidateModels = getModelFallbackChain();
-    const systemPrompt = buildSystemPrompt();
-    const userPrompt = buildUserPrompt(formState);
 
-    const runnerResult = await runGeminiWithVisitorKeys<string>({
-      keys: visitorKeys,
-      candidateModels,
+    const pipelineResult = await generateMultiPagePRDPipeline(
+      formState,
+      visitorKeys,
       visitorPoolId,
-      visitorRequestSequence,
-      executor: async (ai, apiKey, modelCandidate) => {
-        const response = await ai.models.generateContent({
-          model: modelCandidate,
-          contents: userPrompt,
-          config: {
-            systemInstruction: systemPrompt,
-          },
-        });
-        return response.text || '# PRD Generation Failed';
-      },
-    });
+      visitorRequestSequence
+    );
 
-    let markdownOutput = runnerResult.data;
-
-    // Trim preamble text before first H1 header `# `
-    const h1Index = markdownOutput.indexOf('# ');
-    if (h1Index !== -1 && h1Index < 500) {
-      markdownOutput = markdownOutput.substring(h1Index);
-    }
-
-    // Calculate readiness score & reasons based on PRD & Form quality
-    const pageCount = formState.pages?.length || 0;
-    const passed: string[] = [];
-    const warnings: string[] = [];
-
-    if (pageCount >= 3) {
-      passed.push(`Struktur multi-halaman sangat baik (${pageCount} halaman terdefinisi).`);
-    } else if (pageCount >= 2) {
-      passed.push(`Struktur multi-halaman mencukupi (${pageCount} halaman terdefinisi).`);
-    } else {
-      warnings.push('Disarankan menambah minimal 3-5 halaman untuk website bisnis multi-halaman yang komprehensif.');
-    }
-
-    if (formState.projectName) {
-      passed.push(`Nama proyek terdefinisi: "${formState.projectName}".`);
-    } else {
-      warnings.push('Nama proyek belum diisi secara spesifik.');
-    }
-
-    if (formState.sharedLayout) {
-      passed.push(`Konfigurasi Shared Layout (Navbar: ${formState.sharedLayout.navbarStyle}, Footer: ${formState.sharedLayout.footerColumns} kolom) lengkap.`);
-    }
-
-    if (formState.targetAudience && formState.goalWebsite) {
-      passed.push('Target audiens dan goal utama website terdefinisi dengan jelas.');
-    } else {
-      warnings.push('Detail target audiens atau goal website dapat diperjelas.');
-    }
-
-    if (formState.primaryColor && formState.typographyPairing) {
-      passed.push('Identitas visual (warna utama & tipografi) sudah ditentukan.');
-    }
-
-    if (formState.designThemeId) {
-      passed.push(`Fondasi Tema Desain terpilih: "${formState.designThemeId}" — akan diikuti konsisten di seluruh PRD.`);
-    }
-
-    const pagesWithMeta = formState.pages?.filter((p) => p.metaTitle && p.metaDescription).length || 0;
-    if (pagesWithMeta === pageCount && pageCount > 0) {
-      passed.push('Seluruh halaman memiliki target Meta Title & Meta Description SEO.');
-    } else if (pagesWithMeta > 0) {
-      passed.push(`${pagesWithMeta} dari ${pageCount} halaman sudah memiliki Meta Title/Description SEO.`);
-    } else {
-      warnings.push('Belum ada halaman yang diisi Meta Title/Meta Description SEO secara manual (AI akan membuat rekomendasi otomatis).');
-    }
-
-    let readyScore = 70 + (pageCount >= 3 ? 15 : 10) + (formState.projectName ? 5 : 0) + (formState.targetAudience ? 5 : 0) + (warnings.length === 0 ? 5 : 0);
-    readyScore = Math.min(100, Math.max(50, readyScore));
-
-    const responseData: PRDGenerateResponse = {
-      markdown: markdownOutput,
-      readyScore,
-      scoreReasons: {
-        passed,
-        warnings,
-      },
-      modelUsed: runnerResult.modelUsed,
-    };
-
-    return res.json(responseData);
+    return res.json(pipelineResult);
   } catch (err: any) {
     console.error('Error generating PRD:', err?.message || 'terjadi kesalahan');
     return res.status(500).json({ error: err.message || 'Gagal menghasilkan PRD.' });

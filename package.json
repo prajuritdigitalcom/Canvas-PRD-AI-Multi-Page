@@ -9,7 +9,7 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.cjs",
     "lint": "tsc --noEmit",
-    "test": "tsx src/prompts/promptTemplates.test.ts && tsx src/services/gemini/geminiServices.test.ts"
+    "test": "tsx src/prompts/promptTemplates.test.ts && tsx src/services/gemini/geminiServices.test.ts && tsx api/prd/prdEngine.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
